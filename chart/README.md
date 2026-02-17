@@ -97,7 +97,7 @@ helm uninstall binpacking-exporter
 | priorityClassName | string | `""` | Priority class name for pod scheduling. Use an existing PriorityClass name |
 | replicaCount | int | `1` | Number of replicas for the exporter deployment |
 | resources | list | `["cpu","memory"]` | Kubernetes resource types to track. Common values: `cpu`, `memory`, `nvidia.com/gpu` |
-| resyncPeriod | string | `"5m"` | Informer cache resync period. Uses Go duration format (e.g. `1m`, `5m`, `1h30m`) |
+| resyncPeriod | string | `"30m"` | Informer cache resync period. Uses Go duration format (e.g. `1m`, `5m`, `1h30m`) |
 | service.port | int | `9101` | Service port |
 | service.type | string | `"ClusterIP"` | Kubernetes service type |
 | serviceAccount.annotations | object | `{}` | Annotations to add to the service account (e.g. for IAM role bindings) |

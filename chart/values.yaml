@@ -32,7 +32,7 @@ logLevel: info
 logFormat: json
 
 # -- Informer cache resync period. Uses Go duration format (e.g. `1m`, `5m`, `1h30m`)
-resyncPeriod: 5m
+resyncPeriod: 30m
 
 # -- Page size for initial list calls. Use `0` to disable pagination. Recommended `500` for clusters with >1000 pods
 listPageSize: 500

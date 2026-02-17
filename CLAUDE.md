@@ -103,7 +103,7 @@ See [TESTING.md](TESTING.md) for detailed test infrastructure, conventions, help
 
 **Health Checks**: `/healthz` = process alive, `/readyz` = cache synced | Readiness: 5s delay/10s period, Liveness: 10s delay/30s period
 
-**Informers**: `--resync-period` (default 5m) | Separate node and pod factories (pod factory uses `status.phase!=Succeeded,status.phase!=Failed` field selector to exclude terminated pods server-side) | `--list-page-size` pagination (default 500, ~40% memory reduction, client-go handles Continue tokens)
+**Informers**: `--resync-period` (default 30m) | Separate node and pod factories (pod factory uses `status.phase!=Succeeded,status.phase!=Failed` field selector to exclude terminated pods server-side) | `--list-page-size` pagination (default 500, ~40% memory reduction, client-go handles Continue tokens)
 
 ## Conventions
 
@@ -140,7 +140,7 @@ Use [Conventional Commits](https://www.conventionalcommits.org/) format: `type(s
 - Use imperative mood: "add feature" not "added feature"
 
 ### Configuration
-- **Defaults optimized for production**: 5m resync, info logging, port 9101
+- **Defaults optimized for production**: 30m resync, info logging, port 9101
 - **Debug mode changes behavior**: Adds event handlers, increases log verbosity
 - **Helm values mirror flags**: `debug`, `resyncPeriod`, `resources` directly map to CLI flags
 

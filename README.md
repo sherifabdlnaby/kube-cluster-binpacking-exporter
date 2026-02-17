@@ -115,7 +115,7 @@ binpacking_label_group_node_count{label_key="topology.kubernetes.io/zone",label_
 | `--disable-node-metrics` | `false` | Disable per-node metrics to reduce cardinality (only emit cluster-wide and label-group metrics) |
 | `--log-level` | `info` | Log level: debug, info, warn, error |
 | `--log-format` | `json` | Log format: json, text |
-| `--resync-period` | `5m` | Informer cache resync period (e.g., 1m, 30s, 1h30m) |
+| `--resync-period` | `30m` | Informer cache resync period (e.g., 1m, 30s, 1h30m) |
 | `--list-page-size` | `500` | Number of resources to fetch per page during initial sync (0 = no pagination) |
 
 ### HTTP Endpoints
