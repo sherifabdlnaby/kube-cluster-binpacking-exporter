@@ -2,7 +2,8 @@
 
 [![CI](https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter/actions/workflows/ci.yaml)
 [![Release](https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter/actions/workflows/release.yaml/badge.svg)](https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter/actions/workflows/release.yaml)
-[![Trivy](https://img.shields.io/badge/trivy-scanned-blue?logo=aquasecurity&logoColor=white)](https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter/security/code-scanning?query=tool%3ATrivy)
+[![Dependency Vulns](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/sherifabdlnaby/GIST_ID/raw/trivy-deps-badge.json&logo=aquasecurity&logoColor=white)](https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter/security/code-scanning?query=tool%3ATrivy)
+[![Image Vulns](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/sherifabdlnaby/GIST_ID/raw/trivy-image-badge.json&logo=docker&logoColor=white)](https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter/security/code-scanning?query=tool%3ATrivy)
 [![CodeQL](https://img.shields.io/badge/codeql-analyzed-blue?logo=github&logoColor=white)](https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter/security/code-scanning?query=tool%3ACodeQL)
 [![GitHub Release](https://img.shields.io/github/v/release/sherifabdlnaby/kube-cluster-binpacking-exporter)](https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter/releases/latest)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/sherifabdlnaby/kube-cluster-binpacking-exporter)](go.mod)

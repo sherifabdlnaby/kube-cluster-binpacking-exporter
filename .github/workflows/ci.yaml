@@ -63,6 +63,28 @@ jobs:
           sarif_file: trivy-fs.sarif
           category: trivy-filesystem
 
+      - name: Count dependency vulnerabilities
+        if: always()
+        id: trivy-fs-count
+        run: |
+          if [ -f trivy-fs.sarif ]; then
+            COUNT=$(jq '.runs[0].results | length' trivy-fs.sarif)
+          else
+            COUNT=0
+          fi
+          echo "count=$COUNT" >> $GITHUB_OUTPUT
+
+      - name: Update dependency vulnerability badge
+        if: always() && github.ref == 'refs/heads/main'
+        uses: schneegans/dynamic-badges-action@v1.7.0
+        with:
+          auth: ${{ secrets.GIST_TOKEN }}
+          gistID: ${{ vars.BADGE_GIST_ID }}
+          filename: trivy-deps-badge.json
+          label: dependency vulns
+          message: ${{ steps.trivy-fs-count.outputs.count }}
+          color: ${{ steps.trivy-fs-count.outputs.count == '0' && 'brightgreen' || 'red' }}
+
   trivy-image:
     name: Trivy Docker Image Scan
     runs-on: ubuntu-latest
@@ -97,6 +119,28 @@ jobs:
         with:
           sarif_file: trivy-image.sarif
           category: trivy-docker-image
+
+      - name: Count image vulnerabilities
+        if: always()
+        id: trivy-image-count
+        run: |
+          if [ -f trivy-image.sarif ]; then
+            COUNT=$(jq '.runs[0].results | length' trivy-image.sarif)
+          else
+            COUNT=0
+          fi
+          echo "count=$COUNT" >> $GITHUB_OUTPUT
+
+      - name: Update image vulnerability badge
+        if: always() && github.ref == 'refs/heads/main'
+        uses: schneegans/dynamic-badges-action@v1.7.0
+        with:
+          auth: ${{ secrets.GIST_TOKEN }}
+          gistID: ${{ vars.BADGE_GIST_ID }}
+          filename: trivy-image-badge.json
+          label: image vulns
+          message: ${{ steps.trivy-image-count.outputs.count }}
+          color: ${{ steps.trivy-image-count.outputs.count == '0' && 'brightgreen' || 'red' }}
 
   codeql:
     name: CodeQL Analysis
