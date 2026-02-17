@@ -23,7 +23,6 @@ builds:
         goarch: arm
       - goos: windows
         goarch: arm64
-    # ldflags match Makefile (single source of truth)
     ldflags:
       - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
     binary: kube-cluster-binpacking-exporter
@@ -44,7 +43,6 @@ archives:
     files:
       - LICENSE*
       - README*
-      - CHANGELOG*
 
 checksum:
   name_template: 'checksums.txt'
@@ -52,6 +50,54 @@ checksum:
 snapshot:
   version_template: "{{ incpatch .Version }}-next"
 
+# ── Docker images (multi-arch via buildx) ────────────────────────────────
+dockers:
+  - image_templates:
+      - "ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{ .Version }}-amd64"
+    use: buildx
+    goarch: amd64
+    dockerfile: Dockerfile.goreleaser
+    build_flag_templates:
+      - "--pull"
+      - "--platform=linux/amd64"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--label=org.opencontainers.image.source=https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter"
+
+  - image_templates:
+      - "ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{ .Version }}-arm64"
+    use: buildx
+    goarch: arm64
+    dockerfile: Dockerfile.goreleaser
+    build_flag_templates:
+      - "--pull"
+      - "--platform=linux/arm64"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--label=org.opencontainers.image.source=https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter"
+
+# ── Multi-arch manifest lists ────────────────────────────────────────────
+docker_manifests:
+  - name_template: "ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{ .Version }}"
+    image_templates:
+      - "ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{ .Version }}-amd64"
+      - "ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{ .Version }}-arm64"
+
+  - name_template: "ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{ .Major }}.{{ .Minor }}"
+    image_templates:
+      - "ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{ .Version }}-amd64"
+      - "ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{ .Version }}-arm64"
+
+  - name_template: "ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:latest"
+    image_templates:
+      - "ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{ .Version }}-amd64"
+      - "ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{ .Version }}-arm64"
+
+# ── Changelog ────────────────────────────────────────────────────────────
 changelog:
   sort: asc
   use: github
@@ -78,6 +124,7 @@ changelog:
     - title: Others
       order: 999
 
+# ── GitHub Release ───────────────────────────────────────────────────────
 release:
   github:
     owner: sherifabdlnaby
@@ -139,13 +186,3 @@ release:
       ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{.Tag}} \
       --kubeconfig=/kubeconfig
     ```
-
-# Homebrew tap (optional - uncomment if you create a tap)
-# brews:
-#   - repository:
-#       owner: sherifabdlnaby
-#       name: homebrew-tap
-#     directory: Formula
-#     homepage: https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter
-#     description: Prometheus exporter for Kubernetes cluster binpacking efficiency
-#     license: MIT

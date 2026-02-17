@@ -1,83 +1,167 @@
 name: Release
 
+# Single workflow: PR merge → semver tag → GoReleaser (binaries + Docker + GitHub Release) → Helm OCI push
+# PR labels control version bump: major, minor, patch (default), skip-release
+# Manual trigger also supported via workflow_dispatch
+
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g. v1.2.3). Leave empty to auto-detect from last PR."
+        required: false
+        type: string
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+permissions:
+  contents: write
+  packages: write
+  pull-requests: read
 
 jobs:
-  # Build and publish multi-arch Docker image
-  docker-build:
-    name: Build Docker Image
+  release:
     runs-on: ubuntu-latest
-    permissions:
-      packages: write
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set build timestamp
-        id: timestamp
-        run: echo "date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_OUTPUT
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - uses: docker/setup-buildx-action@v3
-
-      - uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: docker/metadata-action@v5
-        id: meta
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha,prefix=
-
-      - name: Build and push multi-arch image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            VERSION=${{ github.ref_name }}
-            COMMIT=${{ github.sha }}
-            DATE=${{ steps.timestamp.outputs.date }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          provenance: false
-
-  # Build and publish Go binaries + create GitHub Release
-  goreleaser:
-    name: Release Binaries
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    # On push: only run for PR merges (not direct pushes)
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && contains(github.event.head_commit.message, 'Merge pull request'))
 
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-go@v5
+      # ── Determine version ─────────────────────────────────────────────
+      - name: Get merged PR number
+        if: github.event_name == 'push'
+        id: pr
+        run: |
+          PR_NUM=$(echo "${{ github.event.head_commit.message }}" | grep -oP 'Merge pull request #\K\d+' || echo "")
+          if [ -z "$PR_NUM" ]; then
+            echo "Not a PR merge, skipping"
+            echo "skip=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          echo "number=$PR_NUM" >> $GITHUB_OUTPUT
+          echo "Found PR #$PR_NUM"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get PR labels and determine bump
+        if: github.event_name == 'push' && steps.pr.outputs.skip != 'true'
+        id: labels
+        run: |
+          LABELS=$(gh pr view ${{ steps.pr.outputs.number }} --json labels --jq '.labels[].name' | tr '\n' ',' || echo "")
+          echo "labels=$LABELS" >> $GITHUB_OUTPUT
+          echo "PR Labels: $LABELS"
+
+          # Check for skip-release
+          if echo "$LABELS" | grep -q "skip-release"; then
+            echo "skip-release label found, skipping"
+            echo "skip=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Determine bump type (priority: major > minor > patch)
+          if echo "$LABELS" | grep -q "major"; then
+            echo "bump=major" >> $GITHUB_OUTPUT
+          elif echo "$LABELS" | grep -q "minor"; then
+            echo "bump=minor" >> $GITHUB_OUTPUT
+          else
+            echo "bump=patch" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute next version
+        if: >-
+          (github.event_name == 'push' && steps.pr.outputs.skip != 'true' && steps.labels.outputs.skip != 'true') ||
+          github.event_name == 'workflow_dispatch'
+        id: version
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            # Manual dispatch with explicit version
+            NEW_TAG="${{ inputs.version }}"
+            # Ensure v prefix
+            [[ "$NEW_TAG" != v* ]] && NEW_TAG="v${NEW_TAG}"
+            echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
+            echo "Manual release: $NEW_TAG"
+            exit 0
+          fi
+
+          BUMP="${{ steps.labels.outputs.bump }}"
+
+          # Get latest semver tag
+          LATEST_TAG=$(git tag -l 'v*' --sort=-v:refname | head -1)
+          if [ -z "$LATEST_TAG" ]; then
+            LATEST_TAG="v0.0.0"
+          fi
+          echo "previous_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+          echo "Previous tag: $LATEST_TAG"
+
+          # Parse major.minor.patch
+          VERSION="${LATEST_TAG#v}"
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+          PATCH="${PATCH%%-*}"  # strip pre-release suffix
+
+          # Bump
+          case "$BUMP" in
+            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+            patch) PATCH=$((PATCH + 1)) ;;
+          esac
+
+          NEW_TAG="v${MAJOR}.${MINOR}.${PATCH}"
+          echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
+          echo "bump=$BUMP" >> $GITHUB_OUTPUT
+          echo "Version bump: $BUMP ($LATEST_TAG -> $NEW_TAG)"
+
+      # ── Skip guard ────────────────────────────────────────────────────
+      - name: Check if release should proceed
+        if: steps.version.outputs.new_tag == ''
+        run: |
+          echo "No version computed — skipping release"
+          exit 0
+
+      # ── Create and push tag ───────────────────────────────────────────
+      - name: Create tag
+        if: steps.version.outputs.new_tag != ''
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.version.outputs.new_tag }}" -m "Release ${{ steps.version.outputs.new_tag }}"
+          git push origin "${{ steps.version.outputs.new_tag }}"
+          echo "Pushed tag ${{ steps.version.outputs.new_tag }}"
+
+      # ── Build environment ─────────────────────────────────────────────
+      - name: Set up QEMU
+        if: steps.version.outputs.new_tag != ''
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        if: steps.version.outputs.new_tag != ''
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        if: steps.version.outputs.new_tag != ''
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Go
+        if: steps.version.outputs.new_tag != ''
+        uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
           cache: true
 
+      # ── GoReleaser (binaries + Docker images + GitHub Release) ────────
       - name: Run GoReleaser
+        if: steps.version.outputs.new_tag != ''
         uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
@@ -86,29 +170,38 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # Package and publish Helm chart to OCI registry
-  helm-publish:
-    name: Publish Helm Chart
-    runs-on: ubuntu-latest
-    permissions:
-      packages: write
+      # ── Helm chart (OCI registry) ────────────────────────────────────
+      - name: Set up Helm
+        if: steps.version.outputs.new_tag != ''
+        uses: azure/setup-helm@v4
 
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: azure/setup-helm@v4
-
-      - name: Package and push Helm chart
+      - name: Publish Helm chart
+        if: steps.version.outputs.new_tag != ''
         run: |
-          # Chart.yaml holds 0.0.0 in the repo — inject the real version at release time
-          CHART_VERSION="${{ github.ref_name }}"
+          CHART_VERSION="${{ steps.version.outputs.new_tag }}"
           CHART_VERSION="${CHART_VERSION#v}"
 
           sed -i "s/^version: .*/version: ${CHART_VERSION}/" chart/Chart.yaml
           sed -i "s/^appVersion: .*/appVersion: \"${CHART_VERSION}\"/" chart/Chart.yaml
 
-          helm package chart/ --version ${CHART_VERSION} --app-version ${CHART_VERSION}
+          helm package chart/ --version "${CHART_VERSION}" --app-version "${CHART_VERSION}"
           echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
-          helm push kube-cluster-binpacking-exporter-${CHART_VERSION}.tgz oci://ghcr.io/${{ github.repository_owner }}/charts
+          helm push "kube-cluster-binpacking-exporter-${CHART_VERSION}.tgz" oci://ghcr.io/${{ github.repository_owner }}/charts
 
-          echo "✅ Published oci://ghcr.io/${{ github.repository_owner }}/charts/kube-cluster-binpacking-exporter:${CHART_VERSION}"
+          echo "Published oci://ghcr.io/${{ github.repository_owner }}/charts/kube-cluster-binpacking-exporter:${CHART_VERSION}"
+
+      # ── PR comment ────────────────────────────────────────────────────
+      - name: Comment on PR
+        if: github.event_name == 'push' && steps.pr.outputs.number != '' && steps.version.outputs.new_tag != ''
+        run: |
+          gh pr comment ${{ steps.pr.outputs.number }} --body "**Release ${{ steps.version.outputs.new_tag }}** published!
+
+          **Bump type:** \`${{ steps.version.outputs.bump }}\`
+          **Previous version:** ${{ steps.version.outputs.previous_tag }}
+
+          **Assets:**
+          - Docker: \`ghcr.io/${{ github.repository }}:${{ steps.version.outputs.new_tag }}\`
+          - Helm: \`oci://ghcr.io/${{ github.repository_owner }}/charts/kube-cluster-binpacking-exporter:${CHART_VERSION#v}\`
+          - [GitHub Release](https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.new_tag }})"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

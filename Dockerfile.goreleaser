@@ -1,0 +1,3 @@
+FROM gcr.io/distroless/static-debian12:nonroot
+COPY kube-cluster-binpacking-exporter /binpacking-exporter
+ENTRYPOINT ["/binpacking-exporter"]
