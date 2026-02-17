@@ -1,7 +1,27 @@
-# Compiled binary
+# Binaries
 kube-cluster-binpacking-exporter
-*.test
+*.exe
+*.dll
+*.so
+*.dylib
 
-# Test coverage files
+# Test binaries and coverage
+*.test
 coverage.out
 coverage.html
+*.prof
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Build artifacts
+dist/
+tmp/
+
+# Diagnostic scripts
+test-connectivity.sh

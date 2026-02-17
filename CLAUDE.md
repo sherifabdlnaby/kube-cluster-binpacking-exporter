@@ -24,7 +24,6 @@ Prometheus exporter that monitors Kubernetes cluster binpacking efficiency. Comp
 | `Dockerfile` | Container image | Multi-stage: `golang:1.25-alpine` → `distroless/static-debian12:nonroot` |
 | `charts/` | Helm deployment | RBAC (get/list/watch nodes+pods), ServiceMonitor, configurable resync period |
 | `.github/workflows/` | CI/CD | `ci.yaml` - build/vet/lint with Go module & build caching, `release.yaml` - GHCR push on tag |
-| `test-connectivity.sh` | Diagnostics | Validates kubeconfig, API connectivity, node/pod access |
 
 ## Metrics Exported
 
@@ -59,9 +58,6 @@ go build -o kube-cluster-binpacking-exporter .
 # Verify
 go vet ./...
 helm lint charts/kube-cluster-binpacking-exporter
-
-# Test connectivity (run this first!)
-./test-connectivity.sh
 
 # Run locally
 go run . --kubeconfig ~/.kube/config
@@ -296,8 +292,8 @@ No controller-runtime, no operator SDK — just the essentials.
 ## Troubleshooting
 
 ### Exporter won't start
-1. Run `./test-connectivity.sh` to check kubeconfig
-2. Check logs with `--debug` for detailed error messages
+1. Check logs with `--debug` for detailed error messages
+2. Verify kubeconfig is valid: `kubectl cluster-info`
 3. Verify RBAC permissions (needs get/list/watch on nodes and pods)
 
 ### Cache sync hangs
