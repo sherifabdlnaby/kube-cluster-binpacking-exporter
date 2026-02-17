@@ -87,13 +87,13 @@ func TestHealthEndpoint(t *testing.T) {
 	// Create a simple handler like in main.go
 	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		io.WriteString(w, "ok\n")
+		_, _ = io.WriteString(w, "ok\n")
 	})
 
 	handler.ServeHTTP(w, req)
 
 	resp := w.Result()
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("/healthz status = %d, want %d", resp.StatusCode, http.StatusOK)
@@ -137,17 +137,17 @@ func TestReadyEndpoint(t *testing.T) {
 			handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				if readyChecker() {
 					w.WriteHeader(http.StatusOK)
-					io.WriteString(w, "ready\n")
+					_, _ = io.WriteString(w, "ready\n")
 				} else {
 					w.WriteHeader(http.StatusServiceUnavailable)
-					io.WriteString(w, "not ready: informer cache not synced\n")
+					_, _ = io.WriteString(w, "not ready: informer cache not synced\n")
 				}
 			})
 
 			handler.ServeHTTP(w, req)
 
 			resp := w.Result()
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if resp.StatusCode != tt.wantStatus {
 				t.Errorf("/readyz status = %d, want %d", resp.StatusCode, tt.wantStatus)
@@ -191,7 +191,7 @@ func TestSyncEndpoint(t *testing.T) {
 	handler.ServeHTTP(w, req)
 
 	resp := w.Result()
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("/sync status = %d, want %d", resp.StatusCode, http.StatusOK)

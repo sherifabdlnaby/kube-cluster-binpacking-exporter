@@ -22,8 +22,8 @@ Prometheus exporter that monitors Kubernetes cluster binpacking efficiency. Comp
 | `kubernetes.go` | Kube client setup | `setupKubernetes()` - config resolution, informer factory, cache sync with progress logging |
 | `collector.go` | Prometheus collector | `Collect()` - computes metrics, `calculatePodRequest()` - init container logic |
 | `Dockerfile` | Container image | Multi-stage: `golang:1.25-alpine` → `distroless/static-debian12:nonroot` |
-| `charts/` | Helm deployment | RBAC (get/list/watch nodes+pods), ServiceMonitor, configurable resync period |
-| `.github/workflows/` | CI/CD | `ci.yaml` - build/vet/lint/test, `release.yaml` - multi-arch Docker + GoReleaser binaries, `auto-release.yaml` - semantic versioning from PR labels |
+| `chart/` | Helm chart | RBAC, ServiceMonitor, published to OCI registry at ghcr.io |
+| `.github/workflows/` | CI/CD | `ci.yaml` - build/vet/lint/test, `release.yaml` - multi-arch Docker + GoReleaser + Helm OCI push, `auto-release.yaml` - semantic versioning from PR labels |
 
 ## Metrics Exported
 
@@ -57,7 +57,7 @@ go build -o kube-cluster-binpacking-exporter .
 
 # Verify
 go vet ./...
-helm lint charts/kube-cluster-binpacking-exporter
+helm lint chart
 
 # Run locally
 go run . --kubeconfig ~/.kube/config
@@ -340,12 +340,35 @@ Each release includes:
 - **Docker images**: `ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:v1.2.3`
   - Multi-arch manifest: linux/amd64, linux/arm64
   - Also tagged as: `1.2.3`, `1.2`, `sha-<commit>`
+- **Helm chart**: `oci://ghcr.io/sherifabdlnaby/charts/kube-cluster-binpacking-exporter:1.2.3`
+  - Published to OCI registry (versioned, matches release)
+  - Includes Kubernetes icon, keywords, maintainer info
 - **Binaries**: Cross-platform archives
   - Linux: amd64, arm64, arm/v7 (tar.gz)
   - macOS: amd64 (Intel), arm64 (Apple Silicon) (tar.gz)
   - Windows: amd64, arm64 (zip)
 - **Checksums**: SHA256 checksums.txt for verification
 - **Changelog**: Auto-generated, grouped by type (Features, Bug Fixes, etc.)
+
+### Installing from OCI Registry
+
+```bash
+# Install latest version
+helm install binpacking-exporter \
+  oci://ghcr.io/sherifabdlnaby/charts/kube-cluster-binpacking-exporter
+
+# Install specific version
+helm install binpacking-exporter \
+  oci://ghcr.io/sherifabdlnaby/charts/kube-cluster-binpacking-exporter \
+  --version 1.2.3
+
+# With custom values
+helm install binpacking-exporter \
+  oci://ghcr.io/sherifabdlnaby/charts/kube-cluster-binpacking-exporter \
+  --set debug=true \
+  --set resyncPeriod=1m \
+  --set resources.requests.cpu=50m
+```
 
 ## Troubleshooting
 

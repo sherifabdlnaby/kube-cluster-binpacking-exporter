@@ -61,7 +61,7 @@ func setupKubernetes(ctx context.Context, logger *slog.Logger, kubeconfigPath st
 
 	// Add event handlers for debug logging.
 	if logger.Enabled(ctx, slog.LevelDebug) {
-		nodeInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		_, err = nodeInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				node := obj.(*corev1.Node)
 				logger.Debug("node added", "node", node.Name)
@@ -75,8 +75,11 @@ func setupKubernetes(ctx context.Context, logger *slog.Logger, kubeconfigPath st
 				logger.Debug("node deleted", "node", node.Name)
 			},
 		})
+		if err != nil {
+			return nil, nil, nil, nil, fmt.Errorf("adding node event handler: %w", err)
+		}
 
-		podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		_, err = podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				pod := obj.(*corev1.Pod)
 				logger.Debug("pod added", "pod", pod.Namespace+"/"+pod.Name, "node", pod.Spec.NodeName)
@@ -90,6 +93,9 @@ func setupKubernetes(ctx context.Context, logger *slog.Logger, kubeconfigPath st
 				logger.Debug("pod deleted", "pod", pod.Namespace+"/"+pod.Name)
 			},
 		})
+		if err != nil {
+			return nil, nil, nil, nil, fmt.Errorf("adding pod event handler: %w", err)
+		}
 	}
 
 	nodeLister := nodeInformer.Lister()

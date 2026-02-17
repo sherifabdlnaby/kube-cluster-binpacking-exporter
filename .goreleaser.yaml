@@ -92,14 +92,31 @@ release:
 
     Prometheus exporter for monitoring Kubernetes cluster binpacking efficiency.
 
-    ### Docker Images
+    ### Container Images
 
-    Multi-arch images available on GitHub Container Registry:
+    Multi-arch Docker images available on GitHub Container Registry:
     ```bash
     docker pull ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{.Tag}}
     ```
 
     Supported platforms: `linux/amd64`, `linux/arm64`
+
+    ### Helm Chart
+
+    Helm chart published to OCI registry:
+    ```bash
+    # Install from OCI registry
+    helm install binpacking-exporter \
+      oci://ghcr.io/sherifabdlnaby/charts/kube-cluster-binpacking-exporter \
+      --version {{.Version}}
+
+    # Or with custom values
+    helm install binpacking-exporter \
+      oci://ghcr.io/sherifabdlnaby/charts/kube-cluster-binpacking-exporter \
+      --version {{.Version}} \
+      --set debug=true \
+      --set resyncPeriod=1m
+    ```
 
   footer: |
     **Full Changelog**: https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter/compare/{{.PreviousTag}}...{{.Tag}}
@@ -108,14 +125,22 @@ release:
 
     ### Installation
 
-    **Helm Chart:**
+    **Helm (Recommended):**
     ```bash
-    helm install binpacking-exporter ./charts/kube-cluster-binpacking-exporter \
-      --set image.tag={{.Tag}}
+    helm install binpacking-exporter \
+      oci://ghcr.io/sherifabdlnaby/charts/kube-cluster-binpacking-exporter \
+      --version {{.Version}}
     ```
 
     **Binary:**
     Download the appropriate binary for your platform from the assets above.
+
+    **Docker:**
+    ```bash
+    docker run -v ~/.kube/config:/kubeconfig:ro \
+      ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{.Tag}} \
+      --kubeconfig=/kubeconfig
+    ```
 
 # Homebrew tap (optional - uncomment if you create a tap)
 # brews:

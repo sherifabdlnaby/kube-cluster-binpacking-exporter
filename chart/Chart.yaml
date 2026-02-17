@@ -4,3 +4,16 @@ description: Prometheus exporter for Kubernetes cluster binpacking efficiency
 type: application
 version: 0.1.0
 appVersion: "0.1.0"
+icon: https://raw.githubusercontent.com/cncf/artwork/master/projects/kubernetes/icon/color/kubernetes-icon-color.svg
+keywords:
+  - kubernetes
+  - prometheus
+  - monitoring
+  - binpacking
+  - metrics
+maintainers:
+  - name: sherifabdlnaby
+    url: https://github.com/sherifabdlnaby
+sources:
+  - https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter
+home: https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter

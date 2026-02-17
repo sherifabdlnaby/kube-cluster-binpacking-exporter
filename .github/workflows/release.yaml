@@ -26,6 +26,8 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - uses: azure/setup-helm@v4
+
       - uses: docker/setup-qemu-action@v3
 
       - uses: docker/setup-buildx-action@v3
@@ -57,6 +59,35 @@ jobs:
             COMMIT=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Update Helm chart version
+        run: |
+          VERSION="${{ github.ref_name }}"
+          # Remove 'v' prefix for chart version
+          CHART_VERSION="${VERSION#v}"
+
+          # Update Chart.yaml with new version and appVersion
+          sed -i "s/^version: .*/version: ${CHART_VERSION}/" chart/Chart.yaml
+          sed -i "s/^appVersion: .*/appVersion: \"${CHART_VERSION}\"/" chart/Chart.yaml
+
+          echo "Updated chart to version: ${CHART_VERSION}"
+          cat chart/Chart.yaml
+
+      - name: Package and push Helm chart
+        run: |
+          VERSION="${{ github.ref_name }}"
+          CHART_VERSION="${VERSION#v}"
+
+          # Package the chart
+          helm package chart --version ${CHART_VERSION} --app-version ${CHART_VERSION}
+
+          # Login to GHCR for Helm
+          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
+
+          # Push to OCI registry
+          helm push kube-cluster-binpacking-exporter-${CHART_VERSION}.tgz oci://ghcr.io/${{ github.repository_owner }}/charts
+
+          echo "✅ Helm chart published to oci://ghcr.io/${{ github.repository_owner }}/charts/kube-cluster-binpacking-exporter:${CHART_VERSION}"
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6

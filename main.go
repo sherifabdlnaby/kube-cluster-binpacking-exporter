@@ -19,8 +19,6 @@ import (
 
 var (
 	version = "dev"
-	commit  = "none"
-	date    = "unknown"
 )
 
 func main() {
@@ -81,7 +79,7 @@ func main() {
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, `<!DOCTYPE html>
+		_, _ = fmt.Fprintf(w, `<!DOCTYPE html>
 <html>
 <head><title>Kube Cluster Binpacking Exporter</title></head>
 <body>
@@ -102,17 +100,17 @@ func main() {
 	// Liveness probe - checks if process is alive
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintln(w, "ok")
+		_, _ = fmt.Fprintln(w, "ok")
 	})
 
 	// Readiness probe - checks if informer cache is synced
 	mux.HandleFunc("/readyz", func(w http.ResponseWriter, _ *http.Request) {
 		if readyChecker() {
 			w.WriteHeader(http.StatusOK)
-			fmt.Fprintln(w, "ready")
+			_, _ = fmt.Fprintln(w, "ready")
 		} else {
 			w.WriteHeader(http.StatusServiceUnavailable)
-			fmt.Fprintln(w, "not ready: informer cache not synced")
+			_, _ = fmt.Fprintln(w, "not ready: informer cache not synced")
 		}
 	})
 
@@ -120,7 +118,7 @@ func main() {
 	mux.HandleFunc("/sync", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, `{
+		_, _ = fmt.Fprintf(w, `{
   "last_sync": "%s",
   "sync_age_seconds": %.0f,
   "resync_period": "%s",

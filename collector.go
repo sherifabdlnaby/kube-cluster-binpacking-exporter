@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 	"time"
 
@@ -200,7 +201,7 @@ func (c *BinpackingCollector) Collect(ch chan<- prometheus.Metric) {
 				podRequest, details := calculatePodRequest(pod, res)
 				allocated += podRequest
 
-				if c.logger.Enabled(nil, slog.LevelDebug) && podRequest > 0 {
+				if c.logger.Enabled(context.TODO(), slog.LevelDebug) && podRequest > 0 {
 					if details.usedInit {
 						c.logger.Debug("pod resource request (init container dominates)",
 							"pod", pod.Namespace+"/"+pod.Name,
