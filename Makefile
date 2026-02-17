@@ -1,5 +1,5 @@
 .PHONY: help build vet test test-verbose test-coverage coverage-html coverage-func lint lint-install \
-        go helm helm-lint helm-template helm-schema helm-docs helm-docs-check clean
+        go helm helm-lint helm-template helm-schema helm-docs helm-docs-install helm-docs-check clean
 
 # ── Build variables ────────────────────────────────────────────────────────
 VERSION ?= dev
@@ -36,7 +36,8 @@ help:
 	@echo "  make helm-lint         - helm lint chart/ --strict"
 	@echo "  make helm-template     - Validate template rendering"
 	@echo "  make helm-schema       - Verify schema rejects invalid values"
-	@echo "  make helm-docs         - Regenerate chart/README.md via helm-docs (Docker)"
+	@echo "  make helm-docs         - Regenerate chart/README.md via helm-docs"
+	@echo "  make helm-docs-install - Install helm-docs $(HELM_DOCS_VERSION)"
 	@echo "  make helm-docs-check   - Fail if chart/README.md is out of date (CI use)"
 	@echo ""
 	@echo "Other:"
@@ -125,12 +126,20 @@ helm-schema:
 
 helm-docs:
 	@echo "Regenerating chart/README.md via helm-docs $(HELM_DOCS_VERSION)..."
-	docker run --rm \
-		-v "$(PWD):/helm-docs" \
-		-w /helm-docs \
-		jnorwood/helm-docs:$(HELM_DOCS_VERSION) \
-		--chart-search-root chart/
+	@which helm-docs > /dev/null || (echo "helm-docs not found. Run 'make helm-docs-install' to install $(HELM_DOCS_VERSION)" && exit 1)
+	@INSTALLED_VERSION=$$(helm-docs --version 2>&1 | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -n1); \
+	if [ "$$INSTALLED_VERSION" != "$(HELM_DOCS_VERSION)" ]; then \
+		echo "WARNING: helm-docs version mismatch (installed: $$INSTALLED_VERSION, expected: $(HELM_DOCS_VERSION))"; \
+		echo "Run 'make helm-docs-install' to fix"; \
+		echo ""; \
+	fi
+	helm-docs --chart-search-root chart/
 	@echo "✓ chart/README.md updated"
+
+helm-docs-install:
+	@echo "Installing helm-docs $(HELM_DOCS_VERSION)..."
+	go install github.com/norwoodj/helm-docs/cmd/helm-docs@$(HELM_DOCS_VERSION)
+	@echo "Installed: $$(helm-docs --version)"
 
 helm-docs-check:
 	@echo "Checking chart/README.md is up to date..."

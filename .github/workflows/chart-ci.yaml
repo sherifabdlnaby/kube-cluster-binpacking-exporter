@@ -42,6 +42,14 @@ jobs:
           # Need full history + ability to push on main
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install helm-docs
+        run: make helm-docs-install
+
       - name: Check chart/README.md is up to date (PRs)
         if: github.event_name == 'pull_request'
         run: make helm-docs-check
