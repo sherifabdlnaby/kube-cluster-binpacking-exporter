@@ -10,22 +10,22 @@
 [![Platforms](https://img.shields.io/badge/platforms-linux%2Famd64%20%7C%20linux%2Farm64-blue)](#development)
 [![License](https://img.shields.io/github/license/sherifabdlnaby/kube-cluster-binpacking-exporter)](LICENSE)
 
-Export straight-forward metrics to track Kubernetes cluster nodes binpacking effeciency, across individual nodes, by node groups (via Labels), or across the entire cluster. That are easier to aggregate over longer period of time.
+Export straight-forward metrics to track Kubernetes cluster nodes binpacking efficiency, across individual nodes, by node groups (via Labels), or across the entire cluster, that are easier to aggregate over longer periods of time.
 
-- **What kind of metrics ?**: Calculate the % of **allocated** resources (via Requests) to **allocatable** resources. Used to track binpacking effecienty and scheduling fragmentation waste.
+- **What kind of metrics?**: Calculate the % of **allocated** resources (via Requests) to **allocatable** resources. Used to track binpacking efficiency and scheduling fragmentation waste.
 
-- **Why not user Kube O11Y tools?** While the combination of `kube-state-metrics`, `kubelet` and `cAdvisor` metrics can be used it fall short because:
+- **Why not use Kube O11Y tools?** While the combination of `kube-state-metrics`, `kubelet` and `cAdvisor` metrics can be used, they fall short because:
 
-    1. These metrics are pulled from different sources at different intervals. This causes aggregration to not give an accurate *snapshot* of the cluster and not reflecting accurate numbers, especially when tracking improvement overtime.
-        1. Inaccuracy is very high in highly-dynamic clusters with a lot pod movement.
-    2. Queries gets extremely complex ( e.g execlude failed & completed pods, handle init containers, complex `joins` to group by node labels )
-    3. Some O11Y tools ( looking at you DD ) query language lacks the flexibility to accuratly combine and aggregate these metrics.
+    1. These metrics are pulled from different sources at different intervals. This causes aggregation to not give an accurate *snapshot* of the cluster and not reflect accurate numbers, especially when tracking improvement over time.
+        1. Inaccuracy is very high in highly-dynamic clusters with a lot of pod movement.
+    2. Queries get extremely complex ( e.g exclude failed & completed pods, handle init containers, complex `joins` to group by node labels )
+    3. Some O11Y tools ( looking at you DD ) query language lacks the flexibility to accurately combine and aggregate these metrics.
 
-- **How is KCP better ?**: Mirror the clsuter state and returns an atomic snapshot of the cluster binpacking state on each scrape. It's like running [eks-node-viewer](https://github.com/awslabs/eks-node-viewer) in a loop.
+- **How is KCP better?**: Mirrors the cluster state and returns an atomic snapshot of the cluster binpacking state on each scrape. It's like running [eks-node-viewer](https://github.com/awslabs/eks-node-viewer) in a loop.
 
-### Who typically uses KCP ?
+### Who typically uses KCP?
 
-Anyone 🤷🏻‍♂️ But specifically Platform Engineers, and Cluster Adminstrators trying to optimize their Cluster Binpacking effecienty (e.g tinkering with [karpenter](https://karpenter.sh/docs/concepts/scheduling/) configurations) and want to track progress overtime.
+Anyone 🤷🏻‍♂️ But specifically Platform Engineers, and Cluster Administrators trying to optimize their Cluster Binpacking efficiency (e.g tinkering with [karpenter](https://karpenter.sh/docs/concepts/scheduling/) configurations) and want to track progress over time.
 
 # Installation
 
@@ -36,7 +36,7 @@ helm install binpacking-exporter \
   --version <check-releases>
 ```
 
-Check Helm [values.yaml](./chart/values.yaml) for options, most importantly how your O11Y stack pull the metrics for `/metrics` ad `:9101`.
+Check Helm [values.yaml](./chart/values.yaml) for options, most importantly how your O11Y stack pulls the metrics from `/metrics` at `:9101`.
 
 ## Features Highlights
 
@@ -55,7 +55,7 @@ Check Helm [values.yaml](./chart/values.yaml) for options, most importantly how 
 
 ### Out of scope
 
-KCP only concern is **Are Pod's _requests_ being satisified in the most effecient way possible**. Tracking if pods are setting the correct requests, and if they are under-utilizing requests is out of the scope of this tool.
+KCP's only concern is **Are Pods' _requests_ being satisfied in the most efficient way possible**. Tracking if pods are setting the correct requests, and if they are under-utilizing requests is out of the scope of this tool.
 
 ## Metrics
 
@@ -120,7 +120,7 @@ binpacking_label_group_node_count{label_key="topology.kubernetes.io/zone",label_
 
 ### HTTP Endpoints
 
-Default to port `:9101`
+Defaults to port `:9101`
 
 | Endpoint | Purpose |
 |----------|---------|
