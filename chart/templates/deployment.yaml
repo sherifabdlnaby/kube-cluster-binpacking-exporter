@@ -118,5 +118,30 @@ spec:
       {{- end }}
       {{- with .Values.topologySpreadConstraints }}
       topologySpreadConstraints:
-        {{- toYaml . | nindent 8 }}
+        {{- range . }}
+        - maxSkew: {{ .maxSkew }}
+          topologyKey: {{ .topologyKey }}
+          whenUnsatisfiable: {{ .whenUnsatisfiable }}
+          {{- if .labelSelector }}
+          labelSelector:
+            {{- toYaml .labelSelector | nindent 12 }}
+          {{- else }}
+          labelSelector:
+            matchLabels:
+              {{- include "binpacking-exporter.selectorLabels" $ | nindent 14 }}
+          {{- end }}
+          {{- if .matchLabelKeys }}
+          matchLabelKeys:
+            {{- toYaml .matchLabelKeys | nindent 12 }}
+          {{- end }}
+          {{- if .nodeAffinityPolicy }}
+          nodeAffinityPolicy: {{ .nodeAffinityPolicy }}
+          {{- end }}
+          {{- if .nodeTaintsPolicy }}
+          nodeTaintsPolicy: {{ .nodeTaintsPolicy }}
+          {{- end }}
+          {{- if .minDomains }}
+          minDomains: {{ .minDomains }}
+          {{- end }}
+        {{- end }}
       {{- end }}
