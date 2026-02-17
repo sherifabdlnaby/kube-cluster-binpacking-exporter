@@ -69,202 +69,32 @@ go run . --list-page-size=0                             # disable pagination (sm
 
 ## Testing
 
-Comprehensive unit tests cover core logic, HTTP endpoints, and edge cases. Tests use mock listers to avoid requiring a real Kubernetes cluster.
+**Quick start**: `go test -v ./...` | **Coverage**: `go test -coverprofile=coverage.out ./...`
 
-### Running Tests
+Tests use mock listers (no cluster required) and cover:
+- **Init container logic** - `calculatePodRequest()` follows K8s scheduler semantics (`max(sum_regular, max_init)`)
+- **Pod filtering** - Running/pending included, unscheduled/terminated excluded
+- **Metrics collection** - Node + cluster aggregates, cache age
+- **HTTP endpoints** - `/healthz`, `/readyz`, `/sync`
+- **Error handling** - Lister failures, missing sync info, edge cases
 
-```bash
-# Run all tests
-go test -v ./...
+**CI**: Tests run on every push (`go test`, `go vet`, `golangci-lint`)
 
-# Run tests with coverage
-go test -v -coverprofile=coverage.out ./...
-
-# View coverage report in browser
-go tool cover -html=coverage.out
-
-# View coverage summary
-go tool cover -func=coverage.out
-
-# Run specific test
-go test -v -run TestCalculatePodRequest
-
-# Run tests with race detector
-go test -race ./...
-```
-
-### Test Files
-
-| File | Coverage | Key Tests |
-|------|----------|-----------|
-| `collector_test.go` | Collector logic | Init container accounting, pod filtering, metric collection, error handling |
-| `kubernetes_test.go` | Kubernetes setup | SyncInfo struct, readiness checker function |
-| `main_test.go` | HTTP handlers | `/healthz`, `/readyz`, `/sync` endpoints, resource parsing |
-
-### Test Infrastructure
-
-**Mock Listers**: Fake implementations avoid real Kubernetes dependencies
-```go
-fakeNodeLister   // Returns test nodes, no API calls
-fakePodLister    // Returns test pods, no API calls
-```
-
-**Helper Functions**: Create test objects consistently
-```go
-makeContainer(name, cpu, memory)            // Create container with resource requests
-makeNode(name, cpu, memory)                 // Create node with allocatable resources
-makePodWithResources(...)                   // Create pod with containers and init containers
-```
-
-**Float Comparison**: `floatEquals()` handles floating-point precision issues
-```go
-floatEquals(a, b float64) bool  // Uses epsilon for approximate equality
-```
-
-### What's Tested
-
-**Init Container Logic** (`TestCalculatePodRequest`)
-- Regular containers only (sum of requests)
-- Init container dominates (max init > sum regular)
-- Regular containers dominate (sum regular > max init)
-- Multiple init containers (takes max)
-- Missing resource requests
-- Memory vs CPU resource calculations
-
-**Pod Filtering** (`TestBinpackingCollector_PodFiltering`)
-- Running pods (included)
-- Pending pods with NodeName (included)
-- Unscheduled pods - no NodeName (excluded)
-- Succeeded/Failed pods (excluded)
-
-**Metrics Collection** (`TestBinpackingCollector_Collect`)
-- Per-node metrics (allocated, allocatable, utilization)
-- Cluster-wide aggregates
-- Cache age metric
-- Correct metric counts (nodes × resources)
-
-**HTTP Endpoints**
-- `/healthz`: Always returns 200 OK
-- `/readyz`: Returns 200 if cache synced, 503 otherwise
-- `/sync`: Returns JSON with cache state
-
-**Error Handling** (`TestBinpackingCollector_ErrorHandling`)
-- Node lister failures
-- Pod lister failures
-- Missing SyncInfo (no cache age metric)
-
-**Edge Cases**
-- Zero allocatable resources
-- Debug logging enabled (no crashes)
-- Empty pods/nodes
-
-### Testing Conventions
-
-**Table-Driven Tests**: Each test uses subtests with descriptive names
-```go
-tests := []struct {
-    name     string
-    input    X
-    expected Y
-}{...}
-for _, tt := range tests {
-    t.Run(tt.name, func(t *testing.T) { ... })
-}
-```
-
-**Test Names**: Use descriptive names that explain the scenario
-```
-TestCalculatePodRequest/init_container_dominates
-TestBinpackingCollector_PodFiltering/unscheduled_pod
-```
-
-**Coverage Target**: Aim for >80% coverage on core logic (collector, kubernetes setup)
-- Use `go test -coverprofile=coverage.out` to measure
-- Exclude error paths that can't realistically happen
-- Focus on business logic over boilerplate
-
-**Test Isolation**: Each test is independent
-- Creates its own fake listers
-- No shared state between tests
-- Tests can run in parallel (future enhancement)
-
-### Adding New Tests
-
-When adding new functionality:
-
-1. **Write test first** (TDD approach):
-   ```bash
-   # Create test case
-   go test -v -run TestNewFunction
-   # Implement function
-   # Verify test passes
-   ```
-
-2. **Use existing helpers** for test data:
-   ```go
-   pod := makePodWithResources("default", "test", "node-1", corev1.PodRunning,
-       []corev1.Container{makeContainer("app", "100m", "128Mi")}, nil)
-   ```
-
-3. **Check coverage impact**:
-   ```bash
-   go test -coverprofile=coverage.out ./...
-   go tool cover -func=coverage.out | grep "total:"
-   ```
-
-4. **Update this section** if adding new test patterns or infrastructure
-
-### CI Integration
-
-Tests run automatically on every push via `.github/workflows/ci.yaml`:
-- `go test ./...` - Run all tests
-- `go vet ./...` - Static analysis
-- `golangci-lint run` - Linter checks
-
-See `TODO.md` for planned testing enhancements:
-- Makefile for standardized test commands
-- Coverage reporting in CI
-- Benchmark tests for performance optimization paths
+See [TESTING.md](TESTING.md) for detailed test infrastructure, conventions, helpers, and TDD workflow.
 
 ## Key Design Decisions
 
-### Logging
-- **`slog` stdlib**: Structured JSON logging, no external deps
-- **Debug flag**: `--debug` enables verbose logging (pod filtering, resource calculations, informer events)
-- **Conditional event handlers**: Only registered when debug enabled via `logger.Enabled(ctx, slog.LevelDebug)` — zero overhead in production
+**Logging**: `slog` stdlib (JSON, no deps) | `--debug` enables verbose mode with conditional event handlers (zero production overhead)
 
-### Kubernetes Client
-- **Config resolution order**: explicit flag → `~/.kube/config` → in-cluster
-- **API connectivity test**: Calls `ServerVersion()` before setting up informers to fail fast
-- **Progress logging during sync**: Updates every 5 seconds showing which informers have synced
-- **Sync timeout**: 2-minute timeout prevents hanging forever on connection issues
+**Kubernetes**: Config resolution: flag → kubeconfig → in-cluster | Fail-fast `ServerVersion()` check | 2-min sync timeout with progress logging every 5s
 
-### Pod Accounting
-- **Init container logic**: `calculatePodRequest()` uses `max(sum_of_regular_containers, max_init_container)` — matches Kubernetes scheduler
-- **Pod filtering**: Excludes `NodeName == ""` (unscheduled) and `Phase == Succeeded|Failed` (terminated) from binpacking calculations
-- **Debug visibility**: Logs when init containers dominate resource reservation
+**Pod Accounting**: `max(sum_regular, max_init)` matches K8s scheduler | Filters unscheduled (`NodeName=""`) and terminated (`Succeeded|Failed`) pods
 
-### Metrics Design
-- **Scrape-time computation**: Metrics created fresh on each scrape using `MustNewConstMetric` — automatically handles node add/remove
-- **Custom registry**: Uses `prometheus.NewRegistry()` instead of `prometheus.DefaultRegistry` to avoid Go runtime metrics
-- **Resource-agnostic labels**: `resource` label instead of separate metric per resource type (cpu, memory, etc.)
-- **Cache age metric**: `binpacking_cache_age_seconds` enables alerting on stale cache
+**Metrics**: Scrape-time `MustNewConstMetric` (auto-handles node churn) | Custom registry (no Go runtime metrics) | `resource` label for extensibility | Cache age metric for stale alerts
 
-### Health Checks
-- **Liveness vs Readiness**: `/healthz` checks process health, `/readyz` checks cache sync state
-- **Readiness function**: `setupKubernetes()` returns closure that checks `HasSynced()` on both informers
-- **Probe timing**: Readiness uses shorter delay/period (5s/10s), liveness uses longer (10s/30s)
+**Health Checks**: `/healthz` = process alive, `/readyz` = cache synced | Readiness: 5s delay/10s period, Liveness: 10s delay/30s period
 
-### Informer Configuration
-- **Configurable resync**: `--resync-period` flag (default 5m) controls how often informers refresh from API server
-- **SharedInformerFactory**: Single watch connection shared between node and pod informers
-- **SyncInfo tracking**: Records last sync time, exposes via `/sync` endpoint and `cache_age_seconds` metric
-- **Pagination support**: `--list-page-size` flag (default 500) enables paginated initial LIST requests
-  - Reduces memory spikes during initial sync by ~40% in large clusters
-  - Uses client-go's `WithTweakListOptions` to set `Limit` on LIST requests
-  - Transparent Continue token handling - no manual pagination logic needed
-  - Set to 0 to disable pagination for small clusters
-  - Progress logging shows elapsed time during paginated sync
+**Informers**: `--resync-period` (default 5m) | SharedInformerFactory (single watch) | `--list-page-size` pagination (default 500, ~40% memory reduction, client-go handles Continue tokens)
 
 ## Conventions
 
@@ -286,99 +116,36 @@ See `TODO.md` for planned testing enhancements:
 
 ## Dependencies
 
-Minimal dependency footprint — only official Kubernetes and Prometheus libs:
+Minimal footprint — only official Kubernetes and Prometheus libraries:
 
-| Package | Purpose | Version Constraint |
-|---------|---------|-------------------|
-| `k8s.io/client-go` | Kubernetes API client, informers, listers | Latest stable |
-| `k8s.io/api` | Kubernetes resource types (Pod, Node, etc.) | Match client-go |
-| `k8s.io/apimachinery` | Kubernetes primitives (Quantity, etc.) | Match client-go |
-| `github.com/prometheus/client_golang` | Prometheus collector interface, HTTP handler | Latest stable |
+| Package | Purpose |
+|---------|---------|
+| `k8s.io/client-go`, `k8s.io/api`, `k8s.io/apimachinery` | Kubernetes client, informers, listers, resource types |
+| `github.com/prometheus/client_golang` | Prometheus collector interface, HTTP handler |
 
 No controller-runtime, no operator SDK — just the essentials.
 
 ## Release Process
 
-### Automated Releases via PR Labels
+**Fully automated** via PR labels on merge to main:
 
-Releases are **fully automated** when merging PRs to main. The version is determined by PR labels:
+| Label | Bump | Example | Use When |
+|-------|------|---------|----------|
+| `major` | Breaking | 1.2.3 → 2.0.0 | API changes, removed features |
+| `minor` | Feature | 1.2.3 → 1.3.0 | New functionality (backward-compatible) |
+| `patch` | Fix | 1.2.3 → 1.2.4 | Bug fixes, docs (default if no label) |
+| `skip-release` | None | - | CI/test changes only |
 
-| Label | Version Bump | Example | Use When |
-|-------|-------------|---------|----------|
-| `major` | Breaking change | 1.2.3 → 2.0.0 | API changes, removed features, major refactors |
-| `minor` | New feature | 1.2.3 → 1.3.0 | New functionality, backward-compatible |
-| `patch` | Bug fix | 1.2.3 → 1.2.4 | Bug fixes, documentation, default if no label |
-| `skip-release` | No release | - | CI changes, tests, docs-only updates |
+**Flow**: PR + label → merge → auto-tag → release (Docker + Helm + binaries + changelog)
 
-**Workflow:**
-1. Create PR with changes → **CI runs** (build/test/lint)
-2. Add appropriate version label (`major`, `minor`, `patch`, or `skip-release`)
-3. Merge PR to `main` → **CI runs again** (safety check) + **Auto-release workflow runs**:
-   - Detects PR merge and reads labels
-   - Calculates new semantic version
-   - Creates and pushes git tag (e.g., `v1.2.3`)
-   - Comments on PR with release details
-4. Tag push → **Release workflow runs**:
-   - Builds multi-arch Docker images on native runners (no emulation)
-   - Builds cross-platform binaries via GoReleaser
-   - Packages and publishes Helm chart to OCI registry
-   - Generates changelog from commits
-   - Creates GitHub Release with all artifacts
-   - Pushes Docker images and Helm chart to ghcr.io
+**Artifacts**:
+- **Docker**: `ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:v1.2.3` (linux/amd64, linux/arm64)
+- **Helm**: `oci://ghcr.io/sherifabdlnaby/charts/kube-cluster-binpacking-exporter:1.2.3`
+- **Binaries**: Linux/macOS/Windows (multiple architectures)
 
-**CI runs on both PRs and main:** Ensures code is tested before merge (PR) and verified after merge (main) for safety.
+**Install**: `helm install binpacking-exporter oci://ghcr.io/sherifabdlnaby/charts/kube-cluster-binpacking-exporter`
 
-**Example PR Labels:**
-- Adding new metric → `minor`
-- Fixing cache sync bug → `patch`
-- Changing metric names → `major`
-- Updating CI workflow → `skip-release`
-
-### Manual Release (if needed)
-
-```bash
-# Create tag manually
-git tag v1.0.0
-git push origin v1.0.0
-
-# Release workflow automatically triggers
-```
-
-### Release Artifacts
-
-Each release includes:
-- **Docker images**: `ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:v1.2.3`
-  - Multi-arch manifest: linux/amd64, linux/arm64
-  - Also tagged as: `1.2.3`, `1.2`, `sha-<commit>`
-- **Helm chart**: `oci://ghcr.io/sherifabdlnaby/charts/kube-cluster-binpacking-exporter:1.2.3`
-  - Published to OCI registry (versioned, matches release)
-  - Includes Kubernetes icon, keywords, maintainer info
-- **Binaries**: Cross-platform archives
-  - Linux: amd64, arm64, arm/v7 (tar.gz)
-  - macOS: amd64 (Intel), arm64 (Apple Silicon) (tar.gz)
-  - Windows: amd64, arm64 (zip)
-- **Checksums**: SHA256 checksums.txt for verification
-- **Changelog**: Auto-generated, grouped by type (Features, Bug Fixes, etc.)
-
-### Installing from OCI Registry
-
-```bash
-# Install latest version
-helm install binpacking-exporter \
-  oci://ghcr.io/sherifabdlnaby/charts/kube-cluster-binpacking-exporter
-
-# Install specific version
-helm install binpacking-exporter \
-  oci://ghcr.io/sherifabdlnaby/charts/kube-cluster-binpacking-exporter \
-  --version 1.2.3
-
-# With custom values
-helm install binpacking-exporter \
-  oci://ghcr.io/sherifabdlnaby/charts/kube-cluster-binpacking-exporter \
-  --set debug=true \
-  --set resyncPeriod=1m \
-  --set resources.requests.cpu=50m
-```
+**Manual** (if needed): `git tag v1.0.0 && git push origin v1.0.0`
 
 ## Troubleshooting
 
