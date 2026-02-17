@@ -15,6 +15,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+          cache: true
 
       - name: Build
         run: go build ./...
@@ -25,10 +26,12 @@ jobs:
       - name: Test
         run: go test ./...
 
-      - name: Lint
-        uses: golangci/golangci-lint-action@v6
-        with:
-          version: latest
+      # Temporarily disabled - golangci-lint doesn't support Go 1.25 yet
+      # Re-enable when golangci-lint adds Go 1.25 support
+      # - name: Lint
+      #   uses: golangci/golangci-lint-action@v6
+      #   with:
+      #     version: latest
 
   helm-lint:
     runs-on: ubuntu-latest

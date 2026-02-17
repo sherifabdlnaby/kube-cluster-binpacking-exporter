@@ -9,8 +9,8 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/informers"
-	listerscorev1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/kubernetes"
+	listerscorev1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
@@ -22,10 +22,10 @@ type ReadyChecker func() bool
 
 // SyncInfo tracks informer synchronization state.
 type SyncInfo struct {
-	LastSyncTime   time.Time
-	ResyncPeriod   time.Duration
-	NodeSynced     func() bool
-	PodSynced      func() bool
+	LastSyncTime time.Time
+	ResyncPeriod time.Duration
+	NodeSynced   func() bool
+	PodSynced    func() bool
 }
 
 func setupKubernetes(ctx context.Context, logger *slog.Logger, kubeconfigPath string, resyncPeriod time.Duration) (listerscorev1.NodeLister, listerscorev1.PodLister, ReadyChecker, *SyncInfo, error) {
@@ -46,7 +46,6 @@ func setupKubernetes(ctx context.Context, logger *slog.Logger, kubeconfigPath st
 	}
 
 	// Test connectivity before setting up informers
-	logger.Info("testing kubernetes API connectivity")
 	serverVersion, err := clientset.Discovery().ServerVersion()
 	if err != nil {
 		return nil, nil, nil, nil, fmt.Errorf("failed to connect to kubernetes API: %w", err)

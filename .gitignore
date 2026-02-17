@@ -1,5 +1,6 @@
 # Compiled binary
 kube-cluster-binpacking-exporter
+*.test
 
 # Test coverage files
 coverage.out

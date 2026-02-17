@@ -6,10 +6,6 @@
 - [ ] Add a feature to calculate binpacking based on a Node Label, with input being a list of labels that we'll calculate the binpacking for all nodes with the same label.
 - [ ] Add JSON and Human Readable (beautiful logs with colors) option, and different log level support.
 
-## Testing
-- [ ] A sample unit test, with all the testing foundation like calculating coverage and so, add a make file and ability to trigger it locally.
-- [ ] Unit tests for important functions.
-- [ ] Unit tests to cover 100% of the code
 
 ## Performance Optimizations
 - [ ] Memory optimization with cache.TransformFunc: Use `informers.WithTransform()` to strip unnecessary fields before caching (reduces memory by ~90%)
