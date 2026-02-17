@@ -1,6 +1,7 @@
 name: Release
 
-# Single workflow: PR merge → semver tag → GoReleaser (binaries + GitHub Release) → Docker → Helm OCI push
+# Single workflow: PR merge → semver tag → GoReleaser (draft) → Docker → Helm OCI push → publish release
+# GoReleaser always creates a draft release; it is published only after Docker and Helm succeed.
 # PR labels control version bump: major, minor, patch (default), skip-release
 # Manual trigger also supported via workflow_dispatch (with optional draft mode)
 
@@ -15,7 +16,7 @@ on:
         required: false
         type: string
       draft:
-        description: "Create as draft release (review before publishing). Docker and Helm are skipped until you publish."
+        description: "Keep as draft release after all artifacts are built. Useful for reviewing before publishing."
         required: false
         type: boolean
         default: false
@@ -167,27 +168,27 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      # ── GoReleaser (binaries + GitHub Release) ──────────────────────
+      # ── GoReleaser (binaries + draft GitHub Release) ───────────────
+      # Always creates a draft — published after Docker and Helm succeed
       - name: Run GoReleaser
         if: steps.version.outputs.new_tag != ''
         uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
           version: '~> v2'
-          args: release --clean ${{ inputs.draft == true && '--draft' || '' }}
+          args: release --clean --draft
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Attest binary artifacts
-        if: steps.version.outputs.new_tag != '' && inputs.draft != true
+        if: steps.version.outputs.new_tag != ''
         uses: actions/attest-build-provenance@v3
         with:
           subject-checksums: ./dist/checksums.txt
 
-      # ── Docker (multi-arch, no per-arch tags) ────────────────────────
-      # Skipped for draft releases — publish Docker/Helm after reviewing the draft
+      # ── Docker (multi-arch) ─────────────────────────────────────────
       - name: Docker metadata
-        if: steps.version.outputs.new_tag != '' && inputs.draft != true
+        if: steps.version.outputs.new_tag != ''
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -198,7 +199,7 @@ jobs:
 
       - name: Build and push multi-arch image
         id: docker-build
-        if: steps.version.outputs.new_tag != '' && inputs.draft != true
+        if: steps.version.outputs.new_tag != ''
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -215,7 +216,7 @@ jobs:
           provenance: false
 
       - name: Attest Docker image
-        if: steps.version.outputs.new_tag != '' && inputs.draft != true
+        if: steps.version.outputs.new_tag != ''
         uses: actions/attest-build-provenance@v3
         with:
           subject-name: ghcr.io/${{ github.repository }}
@@ -224,7 +225,7 @@ jobs:
 
       # ── Security scan (released image) ──────────────────────────────
       - name: Scan released image with Trivy
-        if: steps.version.outputs.new_tag != '' && inputs.draft != true
+        if: steps.version.outputs.new_tag != ''
         uses: aquasecurity/trivy-action@0.34.0
         with:
           image-ref: ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.version }}
@@ -234,7 +235,7 @@ jobs:
           exit-code: "0"
 
       - name: Upload Trivy release SARIF
-        if: steps.version.outputs.new_tag != '' && inputs.draft != true
+        if: steps.version.outputs.new_tag != ''
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: trivy-release.sarif
@@ -242,11 +243,11 @@ jobs:
 
       # ── Helm chart (OCI registry) ────────────────────────────────────
       - name: Set up Helm
-        if: steps.version.outputs.new_tag != '' && inputs.draft != true
+        if: steps.version.outputs.new_tag != ''
         uses: azure/setup-helm@v4
 
       - name: Publish Helm chart
-        if: steps.version.outputs.new_tag != '' && inputs.draft != true
+        if: steps.version.outputs.new_tag != ''
         run: |
           APP_VERSION="${{ steps.version.outputs.new_tag }}"
           CHART_VERSION="${APP_VERSION#v}"
@@ -259,6 +260,14 @@ jobs:
           helm push "kube-cluster-binpacking-exporter-${CHART_VERSION}.tgz" oci://ghcr.io/${{ github.repository_owner }}/charts
 
           echo "Published oci://ghcr.io/${{ github.repository_owner }}/charts/kube-cluster-binpacking-exporter:${CHART_VERSION}"
+
+      # ── Publish release ──────────────────────────────────────────────
+      # All artifacts (binaries, Docker, Helm) are published — undraft unless user requested draft
+      - name: Publish GitHub Release
+        if: steps.version.outputs.new_tag != '' && inputs.draft != true
+        run: gh release edit "${{ steps.version.outputs.new_tag }}" --draft=false
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # ── PR comment ────────────────────────────────────────────────────
       - name: Comment on PR
