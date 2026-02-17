@@ -55,33 +55,39 @@ func setupKubernetes(ctx context.Context, logger *slog.Logger, kubeconfigPath st
 		"version", serverVersion.String(),
 		"platform", serverVersion.Platform)
 
-	// Create factory with or without pagination based on listPageSize.
-	// WithTransform strips unused fields before caching, reducing memory ~90%.
-	var factory informers.SharedInformerFactory
-	if listPageSize > 0 {
-		logger.Info("configuring informers with pagination",
-			"page_size", listPageSize)
-
-		factory = informers.NewSharedInformerFactoryWithOptions(
-			clientset,
-			resyncPeriod,
-			informers.WithTweakListOptions(func(opts *metav1.ListOptions) {
-				opts.Limit = listPageSize
-			}),
-			informers.WithTransform(stripUnusedFields),
-		)
-	} else {
-		logger.Info("configuring informers without pagination")
-		factory = informers.NewSharedInformerFactoryWithOptions(
-			clientset,
-			resyncPeriod,
-			informers.WithTransform(stripUnusedFields),
-		)
+	// Create separate informer factories for nodes and pods.
+	// Pods use a server-side field selector to exclude terminated (Succeeded/Failed)
+	// pods, avoiding unnecessary cache memory for pods that don't contribute to
+	// allocation calculations. This requires a separate factory because
+	// WithTweakListOptions applies to all informers in a factory.
+	nodeOpts := []informers.SharedInformerOption{
+		informers.WithTransform(stripUnusedFields),
 	}
-	logger.Info("informer transform enabled (stripping unused fields for memory optimization)")
+	podOpts := []informers.SharedInformerOption{
+		informers.WithTransform(stripUnusedFields),
+		informers.WithTweakListOptions(func(opts *metav1.ListOptions) {
+			opts.FieldSelector = "status.phase!=Succeeded,status.phase!=Failed"
+			if listPageSize > 0 {
+				opts.Limit = listPageSize
+			}
+		}),
+	}
 
-	nodeInformer := factory.Core().V1().Nodes()
-	podInformer := factory.Core().V1().Pods()
+	if listPageSize > 0 {
+		logger.Info("configuring informers with pagination", "page_size", listPageSize)
+		nodeOpts = append(nodeOpts, informers.WithTweakListOptions(func(opts *metav1.ListOptions) {
+			opts.Limit = listPageSize
+		}))
+	}
+
+	nodeFactory := informers.NewSharedInformerFactoryWithOptions(clientset, resyncPeriod, nodeOpts...)
+	podFactory := informers.NewSharedInformerFactoryWithOptions(clientset, resyncPeriod, podOpts...)
+	logger.Info("informer factories configured",
+		"pod_field_selector", "status.phase!=Succeeded,status.phase!=Failed",
+		"pagination", listPageSize > 0)
+
+	nodeInformer := nodeFactory.Core().V1().Nodes()
+	podInformer := podFactory.Core().V1().Pods()
 
 	// Add event handlers for debug logging.
 	if logger.Enabled(ctx, slog.LevelDebug) {
@@ -125,7 +131,8 @@ func setupKubernetes(ctx context.Context, logger *slog.Logger, kubeconfigPath st
 	nodeLister := nodeInformer.Lister()
 	podLister := podInformer.Lister()
 
-	factory.Start(ctx.Done())
+	nodeFactory.Start(ctx.Done())
+	podFactory.Start(ctx.Done())
 	logger.Info("starting informers and waiting for cache sync (this may take 10-30 seconds)")
 
 	// Wait with timeout and periodic progress updates
