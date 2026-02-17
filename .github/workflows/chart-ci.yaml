@@ -20,7 +20,7 @@ jobs:
     name: Lint & Validate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: azure/setup-helm@v4
 
@@ -37,7 +37,7 @@ jobs:
     name: Helm Docs
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           # Need write access to push auto-fix commits to PR branches
           token: ${{ secrets.GITHUB_TOKEN }}
