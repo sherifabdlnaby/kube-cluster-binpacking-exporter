@@ -41,6 +41,7 @@ serviceAccount:
   annotations: {}
   name: ""
 
+# Pod annotations. Can be used for Datadog OpenMetrics auto-discovery (see chart/README.md).
 podAnnotations: {}
 podLabels: {}
 

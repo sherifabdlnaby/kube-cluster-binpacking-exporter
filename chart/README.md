@@ -223,6 +223,53 @@ serviceMonitor:
     prometheus: kube-prometheus
 ```
 
+### Datadog Integration (OpenMetrics Auto-Discovery)
+
+If you use the Datadog Agent instead of Prometheus Operator, configure scraping via pod annotations.
+The Datadog Agent auto-discovers the endpoint at runtime using the `%%host%%` template variable.
+
+```yaml
+# values.yaml
+podAnnotations:
+  ad.datadoghq.com/kube-cluster-binpacking-exporter.checks: |
+    {
+      "openmetrics": {
+        "instances": [
+          {
+            "openmetrics_endpoint": "http://%%host%%:9101/metrics",
+            "namespace": "binpacking",
+            "metrics": ["binpacking_.*"]
+          }
+        ]
+      }
+    }
+```
+
+Install with:
+
+```bash
+helm install binpacking-exporter ./chart -f values.yaml
+```
+
+**What this does:**
+- Instructs the Datadog Agent to scrape `/metrics` on port `9101`
+- Collects all metrics matching `binpacking_.*`
+- Prefixes metrics in Datadog with `binpacking.` (from `namespace`)
+- `%%host%%` resolves to the pod IP automatically — no service DNS needed
+
+**Datadog metric names after collection:**
+
+| Prometheus Metric | Datadog Metric |
+|-------------------|----------------|
+| `binpacking_node_utilization_ratio` | `binpacking.node.utilization_ratio` |
+| `binpacking_cluster_utilization_ratio` | `binpacking.cluster.utilization_ratio` |
+| `binpacking_cluster_allocated` | `binpacking.cluster.allocated` |
+| `binpacking_cache_age_seconds` | `binpacking.cache.age_seconds` |
+
+**Requirements:**
+- Datadog Agent 7.27+ (OpenMetrics v2)
+- Agent must be running as a DaemonSet with pod annotation auto-discovery enabled (default)
+
 ### Debug Mode
 
 Enable verbose logging for troubleshooting:
