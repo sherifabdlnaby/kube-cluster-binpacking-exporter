@@ -26,5 +26,7 @@ tmp/
 # Diagnostic scripts
 test-connectivity.sh
 
-# Claude Code AI memory (local only)
+# Claude Code
+.claude/settings.local.json
+.claude/todos.json
 memory/
