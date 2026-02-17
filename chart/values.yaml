@@ -1,67 +1,91 @@
+# -- Number of replicas for the exporter deployment
 replicaCount: 1
 
 image:
+  # -- Container image repository
   repository: ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter
+  # -- Image pull policy. Valid values: `Always`, `IfNotPresent`, `Never`
   pullPolicy: IfNotPresent
+  # -- Image tag. Defaults to the chart's `appVersion` when empty
   tag: ""
 
+# -- Image pull secrets for private registries
 imagePullSecrets: []
+# -- Override the chart name
 nameOverride: ""
+# -- Override the full release name
 fullnameOverride: ""
 
-# Resources to track for binpacking metrics.
+# -- Kubernetes resource types to track. Common values: `cpu`, `memory`, `nvidia.com/gpu`
 resources:
   - cpu
   - memory
 
+# -- Port on which the exporter serves metrics
 metricsPort: 9101
+# -- HTTP path for the metrics endpoint
 metricsPath: /metrics
 
-# Logging configuration
-logLevel: info  # Options: debug, info, warn, error
-logFormat: json  # Options: json, text
+# -- Log level. Valid values: `debug`, `info`, `warn`, `error`
+logLevel: info
+# -- Log format. Valid values: `json`, `text`
+logFormat: json
 
-# Informer cache resync period (e.g., 1m, 5m, 1h30m)
+# -- Informer cache resync period. Uses Go duration format (e.g. `1m`, `5m`, `1h30m`)
 resyncPeriod: 5m
 
-# List page size for initial sync (0 = no pagination, recommended: 500 for >1000 pods)
+# -- Page size for initial list calls. Use `0` to disable pagination. Recommended `500` for clusters with >1000 pods
 listPageSize: 500
 
-# Label-based grouping: list of node label keys to group by
-# Example: ["topology.kubernetes.io/zone", "node.kubernetes.io/instance-type"]
-# Enables per-zone, per-instance-type binpacking metrics
+# -- Node label keys to group metrics by. Enables per-zone, per-instance-type metrics. Example: `["topology.kubernetes.io/zone"]`
 labelGroups: []
 
-# Disable per-node metrics to reduce cardinality (only emit cluster-wide and label-group metrics)
-# Recommended for clusters with >100 nodes when only aggregate metrics are needed
+# -- Disable per-node metrics to reduce cardinality. Recommended for clusters with >100 nodes
 disableNodeMetrics: false
 
 serviceAccount:
+  # -- Create a service account for the exporter
   create: true
+  # -- Annotations to add to the service account (e.g. for IAM role bindings)
   annotations: {}
+  # -- Override the service account name. Defaults to the release name when empty
   name: ""
 
-# Pod annotations. Can be used for Datadog OpenMetrics auto-discovery (see chart/README.md).
+# -- Additional pod annotations. See chart README for Datadog auto-discovery example
 podAnnotations: {}
+# -- Additional pod labels
 podLabels: {}
 
+# @default -- See values.yaml
 podResources:
   requests:
+    # -- CPU request for the exporter pod
     cpu: 50m
+    # -- Memory request for the exporter pod
     memory: 64Mi
   limits:
+    # -- Memory limit for the exporter pod
     memory: 128Mi
 
+# -- Node selector for pod scheduling
 nodeSelector: {}
+# -- Tolerations for pod scheduling
 tolerations: []
+# -- Affinity rules for pod scheduling
 affinity: {}
 
 service:
+  # -- Kubernetes service type
   type: ClusterIP
+  # -- Service port
   port: 9101
 
 serviceMonitor:
+  # -- Create a Prometheus Operator ServiceMonitor resource
   enabled: false
+  # -- Scrape interval
   interval: 30s
+  # -- Scrape timeout
   scrapeTimeout: 10s
+  # -- Additional labels for the ServiceMonitor (use to match your Prometheus selector labels)
   additionalLabels: {}

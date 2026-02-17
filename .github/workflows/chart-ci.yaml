@@ -1,0 +1,84 @@
+name: Chart CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "chart/**"
+      - ".github/workflows/chart-ci.yaml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "chart/**"
+      - ".github/workflows/chart-ci.yaml"
+  workflow_dispatch:
+
+jobs:
+  lint-and-validate:
+    name: Lint & Validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/setup-helm@v4
+
+      - name: Lint chart (strict)
+        # --strict fails on warnings too; values.schema.json is validated automatically
+        run: helm lint chart/ --strict
+
+      - name: Validate template rendering
+        # Ensures all templates render without errors against default values
+        run: helm template binpacking-exporter chart/ > /dev/null
+
+      - name: Validate template with schema violations
+        # Confirm schema rejects invalid values
+        run: |
+          ! helm template binpacking-exporter chart/ \
+            --set logLevel=invalid-level > /dev/null 2>&1 \
+          && echo "Schema correctly rejected invalid logLevel" \
+          || (echo "ERROR: Schema should have rejected invalid logLevel" && exit 1)
+
+  helm-docs:
+    name: Helm Docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Need full history + ability to push on main
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run helm-docs
+        run: |
+          docker run --rm \
+            -v "$(pwd):/helm-docs" \
+            -w /helm-docs \
+            jnorwood/helm-docs:v1.14.2 \
+            --chart-search-root chart/
+
+      - name: Check if README.md changed (fail on PRs)
+        if: github.event_name == 'pull_request'
+        run: |
+          if ! git diff --quiet chart/README.md; then
+            echo ""
+            echo "chart/README.md is out of date!"
+            echo "Run 'helm-docs --chart-search-root chart/' locally and commit the result."
+            echo ""
+            echo "Diff:"
+            git diff chart/README.md
+            exit 1
+          fi
+          echo "chart/README.md is up to date."
+
+      - name: Auto-commit updated README (on main)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          if ! git diff --quiet chart/README.md; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add chart/README.md
+            git commit -m "docs: update chart/README.md via helm-docs [skip ci]"
+            git push
+            echo "Committed updated chart/README.md"
+          else
+            echo "chart/README.md already up to date, nothing to commit."
+          fi

@@ -32,8 +32,3 @@ jobs:
         uses: golangci/golangci-lint-action@v7
         with:
           version: v2.9.0
-
-      - uses: azure/setup-helm@v4
-
-      - name: Lint Helm chart
-        run: helm lint chart

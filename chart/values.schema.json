@@ -1,0 +1,207 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "replicaCount": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Number of replicas for the exporter deployment"
+    },
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "repository": {
+          "type": "string",
+          "description": "Container image repository"
+        },
+        "pullPolicy": {
+          "type": "string",
+          "enum": ["Always", "IfNotPresent", "Never"],
+          "description": "Image pull policy"
+        },
+        "tag": {
+          "type": "string",
+          "description": "Image tag. Defaults to chart appVersion when empty"
+        }
+      }
+    },
+    "imagePullSecrets": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "description": "Image pull secrets for private registries"
+    },
+    "nameOverride": {
+      "type": "string",
+      "description": "Override the chart name"
+    },
+    "fullnameOverride": {
+      "type": "string",
+      "description": "Override the full release name"
+    },
+    "resources": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "description": "Kubernetes resource types to track (e.g. cpu, memory, nvidia.com/gpu)"
+    },
+    "metricsPort": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 65535,
+      "description": "Port on which the exporter serves metrics"
+    },
+    "metricsPath": {
+      "type": "string",
+      "pattern": "^/.*",
+      "description": "HTTP path for the metrics endpoint"
+    },
+    "logLevel": {
+      "type": "string",
+      "enum": ["debug", "info", "warn", "error"],
+      "description": "Log level"
+    },
+    "logFormat": {
+      "type": "string",
+      "enum": ["json", "text"],
+      "description": "Log format"
+    },
+    "resyncPeriod": {
+      "type": "string",
+      "pattern": "^[0-9]+(ns|us|µs|ms|s|m|h)(\\d+(ns|us|µs|ms|s|m|h))*$",
+      "description": "Informer cache resync period in Go duration format"
+    },
+    "listPageSize": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Page size for initial list calls. 0 disables pagination"
+    },
+    "labelGroups": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Node label keys to group metrics by"
+    },
+    "disableNodeMetrics": {
+      "type": "boolean",
+      "description": "Disable per-node metrics to reduce cardinality"
+    },
+    "serviceAccount": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "create": {
+          "type": "boolean",
+          "description": "Create a service account for the exporter"
+        },
+        "annotations": {
+          "type": "object",
+          "description": "Annotations for the service account"
+        },
+        "name": {
+          "type": "string",
+          "description": "Override the service account name"
+        }
+      }
+    },
+    "podAnnotations": {
+      "type": "object",
+      "description": "Additional pod annotations"
+    },
+    "podLabels": {
+      "type": "object",
+      "description": "Additional pod labels"
+    },
+    "podResources": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "requests": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "cpu": {
+              "type": "string",
+              "description": "CPU request"
+            },
+            "memory": {
+              "type": "string",
+              "description": "Memory request"
+            }
+          }
+        },
+        "limits": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "cpu": {
+              "type": "string",
+              "description": "CPU limit"
+            },
+            "memory": {
+              "type": "string",
+              "description": "Memory limit"
+            }
+          }
+        }
+      }
+    },
+    "nodeSelector": {
+      "type": "object",
+      "description": "Node selector for pod scheduling"
+    },
+    "tolerations": {
+      "type": "array",
+      "description": "Tolerations for pod scheduling"
+    },
+    "affinity": {
+      "type": "object",
+      "description": "Affinity rules for pod scheduling"
+    },
+    "service": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["ClusterIP", "NodePort", "LoadBalancer"],
+          "description": "Kubernetes service type"
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535,
+          "description": "Service port"
+        }
+      }
+    },
+    "serviceMonitor": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Create a Prometheus Operator ServiceMonitor resource"
+        },
+        "interval": {
+          "type": "string",
+          "description": "Scrape interval (e.g. 30s, 1m)"
+        },
+        "scrapeTimeout": {
+          "type": "string",
+          "description": "Scrape timeout (e.g. 10s)"
+        },
+        "additionalLabels": {
+          "type": "object",
+          "description": "Additional labels for the ServiceMonitor"
+        }
+      }
+    }
+  }
+}

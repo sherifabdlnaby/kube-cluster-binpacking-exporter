@@ -20,6 +20,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set build timestamp
+        id: timestamp
+        run: echo "date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_OUTPUT
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
@@ -51,6 +55,7 @@ jobs:
           build-args: |
             VERSION=${{ github.ref_name }}
             COMMIT=${{ github.sha }}
+            DATE=${{ steps.timestamp.outputs.date }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           provenance: false
