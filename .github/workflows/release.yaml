@@ -10,7 +10,7 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  # Build multi-arch Docker images using QEMU emulation
+  # Build and publish multi-arch Docker image
   docker-build:
     name: Build Docker Image
     runs-on: ubuntu-latest
@@ -60,14 +60,12 @@ jobs:
           cache-to: type=gha,mode=max
           provenance: false
 
-  # Release binaries and Helm chart
-  release:
-    name: Release Artifacts
-    needs: docker-build
+  # Build and publish Go binaries + create GitHub Release
+  goreleaser:
+    name: Release Binaries
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      packages: write
 
     steps:
       - uses: actions/checkout@v4
@@ -79,7 +77,6 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      # Run GoReleaser FIRST (requires clean git state)
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
@@ -89,34 +86,30 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Helm operations AFTER GoReleaser (can modify files)
+  # Package and publish Helm chart to OCI registry
+  helm-publish:
+    name: Publish Helm Chart
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
       - uses: azure/setup-helm@v4
-
-      - name: Update Helm chart version
-        run: |
-          VERSION="${{ github.ref_name }}"
-          # Remove 'v' prefix for chart version
-          CHART_VERSION="${VERSION#v}"
-
-          # Update Chart.yaml with new version and appVersion
-          sed -i "s/^version: .*/version: ${CHART_VERSION}/" chart/Chart.yaml
-          sed -i "s/^appVersion: .*/appVersion: \"${CHART_VERSION}\"/" chart/Chart.yaml
-
-          echo "Updated chart to version: ${CHART_VERSION}"
-          cat chart/Chart.yaml
 
       - name: Package and push Helm chart
         run: |
           VERSION="${{ github.ref_name }}"
           CHART_VERSION="${VERSION#v}"
 
-          # Package the chart
+          # Update Chart.yaml with release version
+          sed -i "s/^version: .*/version: ${CHART_VERSION}/" chart/Chart.yaml
+          sed -i "s/^appVersion: .*/appVersion: \"${CHART_VERSION}\"/" chart/Chart.yaml
+
+          # Package and push to OCI registry
           helm package chart --version ${CHART_VERSION} --app-version ${CHART_VERSION}
-
-          # Login to GHCR for Helm
           echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
-
-          # Push to OCI registry
           helm push kube-cluster-binpacking-exporter-${CHART_VERSION}.tgz oci://ghcr.io/${{ github.repository_owner }}/charts
 
-          echo "✅ Helm chart published to oci://ghcr.io/${{ github.repository_owner }}/charts/kube-cluster-binpacking-exporter:${CHART_VERSION}"
+          echo "✅ Published oci://ghcr.io/${{ github.repository_owner }}/charts/kube-cluster-binpacking-exporter:${CHART_VERSION}"
