@@ -34,7 +34,7 @@ helm install binpacking-exporter ./chart
 ```bash
 helm install binpacking-exporter \
   oci://ghcr.io/sherifabdlnaby/charts/kube-cluster-binpacking-exporter \
-  --version 0.1.0
+  --version 0.0.0
 ```
 
 ### From Source
@@ -74,6 +74,11 @@ helm uninstall binpacking-exporter
 | image.tag | string | `""` | Image tag. Defaults to the chart's `appVersion` when empty |
 | imagePullSecrets | list | `[]` | Image pull secrets for private registries |
 | labelGroups | list | `[]` | Node label keys to group metrics by. Enables per-zone, per-instance-type metrics. Example: `["topology.kubernetes.io/zone"]` |
+| leaderElection.enabled | bool | `false` | Enable leader election for HA active-passive mode. Only the leader publishes binpacking metrics. Auto-enabled when `replicaCount > 1` |
+| leaderElection.leaseDuration | string | `"15s"` | Duration that non-leader candidates will wait before attempting to acquire leadership |
+| leaderElection.leaseName | string | `"binpacking-exporter"` | Name of the Lease object used for leader election |
+| leaderElection.renewDeadline | string | `"10s"` | Duration that the leader will retry refreshing leadership before giving up |
+| leaderElection.retryPeriod | string | `"2s"` | Duration between leader election retries |
 | listPageSize | int | `500` | Page size for initial list calls. Use `0` to disable pagination. Recommended `500` for clusters with >1000 pods |
 | logFormat | string | `"json"` | Log format. Valid values: `json`, `text` |
 | logLevel | string | `"info"` | Log level. Valid values: `debug`, `info`, `warn`, `error` |
@@ -82,10 +87,14 @@ helm uninstall binpacking-exporter
 | nameOverride | string | `""` | Override the chart name |
 | nodeSelector | object | `{}` | Node selector for pod scheduling |
 | podAnnotations | object | `{}` | Additional pod annotations. See chart README for Datadog auto-discovery example |
+| podDisruptionBudget.enabled | bool | `false` | Create a PodDisruptionBudget resource |
+| podDisruptionBudget.maxUnavailable | string | `""` | Maximum number of pods that can be unavailable. Cannot be set together with `minAvailable` |
+| podDisruptionBudget.minAvailable | string | `""` | Minimum number of pods that must remain available. Cannot be set together with `maxUnavailable` |
 | podLabels | object | `{}` | Additional pod labels |
-| podResources.limits.memory | string | `"128Mi"` | Memory limit for the exporter pod |
+| podResources.limits.memory | string | `"150Mi"` | Memory limit for the exporter pod |
 | podResources.requests.cpu | string | `"50m"` | CPU request for the exporter pod |
-| podResources.requests.memory | string | `"64Mi"` | Memory request for the exporter pod |
+| podResources.requests.memory | string | `"100Mi"` | Memory request for the exporter pod |
+| priorityClassName | string | `""` | Priority class name for pod scheduling. Use an existing PriorityClass name |
 | replicaCount | int | `1` | Number of replicas for the exporter deployment |
 | resources | list | `["cpu","memory"]` | Kubernetes resource types to track. Common values: `cpu`, `memory`, `nvidia.com/gpu` |
 | resyncPeriod | string | `"5m"` | Informer cache resync period. Uses Go duration format (e.g. `1m`, `5m`, `1h30m`) |
@@ -99,6 +108,7 @@ helm uninstall binpacking-exporter
 | serviceMonitor.interval | string | `"30s"` | Scrape interval |
 | serviceMonitor.scrapeTimeout | string | `"10s"` | Scrape timeout |
 | tolerations | list | `[]` | Tolerations for pod scheduling |
+| topologySpreadConstraints | list | `[]` | Topology spread constraints for pod scheduling |
 
 ## Examples
 
