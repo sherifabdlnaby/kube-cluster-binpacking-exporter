@@ -72,14 +72,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      # The auto-release workflow creates a GitHub Release alongside the tag.
-      # That release is immediately immutable, blocking GoReleaser's asset uploads.
-      # Deleting it here lets GoReleaser create a fresh release with assets atomically.
-      - name: Delete pre-existing release
-        run: gh release delete "${{ github.ref_name }}" --yes --cleanup-tag=false 2>/dev/null || true
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod

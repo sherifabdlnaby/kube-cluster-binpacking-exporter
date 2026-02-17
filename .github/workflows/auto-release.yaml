@@ -2,9 +2,9 @@ name: Auto Release
 
 # Workflow Sequence:
 # 1. PR created → CI runs (build/test/lint)
-# 2. PR merged to main → CI runs again (safety check) + This workflow detects merge
-# 3. Creates semantic version tag based on PR labels
-# 4. Tag push triggers Release workflow (Docker + binaries + Helm)
+# 2. PR merged to main → This workflow detects the merge
+# 3. Creates a semantic version tag based on PR labels (tag only, no release)
+# 4. Tag push triggers Release workflow (GoReleaser creates the GitHub Release)
 
 on:
   push:
@@ -57,33 +57,52 @@ jobs:
             echo "skip=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: Determine version bump type
+      - name: Determine version bump and create tag
         if: steps.pr.outputs.skip != 'true' && steps.skip-check.outputs.skip != 'true'
-        id: bump
+        id: tag
         run: |
           LABELS="${{ steps.labels.outputs.labels }}"
 
           # Determine bump type based on labels (priority: major > minor > patch)
           if echo "$LABELS" | grep -q "major"; then
-            echo "type=major" >> $GITHUB_OUTPUT
-            echo "Version bump: MAJOR (breaking changes)"
+            BUMP="major"
           elif echo "$LABELS" | grep -q "minor"; then
-            echo "type=minor" >> $GITHUB_OUTPUT
-            echo "Version bump: MINOR (new features)"
+            BUMP="minor"
           else
-            echo "type=patch" >> $GITHUB_OUTPUT
-            echo "Version bump: PATCH (bug fixes)"
+            BUMP="patch"
           fi
+          echo "bump=$BUMP" >> $GITHUB_OUTPUT
 
-      - name: Bump version and create tag
-        if: steps.pr.outputs.skip != 'true' && steps.skip-check.outputs.skip != 'true'
-        id: tag
-        uses: mathieudutour/github-tag-action@v6.2
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          tag_prefix: v
-          default_bump: ${{ steps.bump.outputs.type }}
-          create_annotated_tag: true
+          # Get the latest semver tag
+          LATEST_TAG=$(git tag -l 'v*' --sort=-v:refname | head -1)
+          if [ -z "$LATEST_TAG" ]; then
+            LATEST_TAG="v0.0.0"
+          fi
+          echo "Previous tag: $LATEST_TAG"
+
+          # Parse major.minor.patch
+          VERSION="${LATEST_TAG#v}"
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+          # Strip any pre-release suffix (e.g., 0.1.2-rc1 → 0.1.2)
+          PATCH="${PATCH%%-*}"
+
+          # Bump
+          case "$BUMP" in
+            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+            patch) PATCH=$((PATCH + 1)) ;;
+          esac
+
+          NEW_TAG="v${MAJOR}.${MINOR}.${PATCH}"
+          echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
+          echo "previous_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+          echo "Version bump: $BUMP ($LATEST_TAG → $NEW_TAG)"
+
+          # Create annotated tag and push (triggers release.yaml)
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$NEW_TAG" -m "Release $NEW_TAG"
+          git push origin "$NEW_TAG"
 
       - name: Comment on PR
         if: steps.tag.outputs.new_tag != ''
@@ -92,12 +111,9 @@ jobs:
 
           **New version:** ${{ steps.tag.outputs.new_tag }}
           **Previous version:** ${{ steps.tag.outputs.previous_tag }}
-          **Bump type:** \`${{ steps.bump.outputs.type }}\`
+          **Bump type:** \`${{ steps.tag.outputs.bump }}\`
 
           The release workflow is now building multi-arch Docker images and cross-platform binaries.
-
-          **Changelog:**
-          ${{ steps.tag.outputs.changelog }}
 
           📦 [View release when ready](https://github.com/${{ github.repository }}/releases/tag/${{ steps.tag.outputs.new_tag }})
           🐳 Docker: \`ghcr.io/${{ github.repository }}:${{ steps.tag.outputs.new_tag }}\`"
