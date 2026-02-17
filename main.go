@@ -29,6 +29,7 @@ func main() {
 		resourceCSV  string
 		debug        bool
 		resyncPeriod string
+		listPageSize int
 	)
 
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "path to kubeconfig (uses in-cluster config if empty)")
@@ -37,6 +38,7 @@ func main() {
 	flag.StringVar(&resourceCSV, "resources", "cpu,memory", "comma-separated list of resources to track")
 	flag.BoolVar(&debug, "debug", false, "enable debug logging")
 	flag.StringVar(&resyncPeriod, "resync-period", "5m", "informer cache resync period (e.g., 1m, 30s, 1h30m)")
+	flag.IntVar(&listPageSize, "list-page-size", 500, "number of resources to fetch per page during initial sync (0 = no pagination)")
 	flag.Parse()
 
 	logLevel := slog.LevelInfo
@@ -59,7 +61,7 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	nodeLister, podLister, readyChecker, syncInfo, err := setupKubernetes(ctx, logger, kubeconfig, resync)
+	nodeLister, podLister, readyChecker, syncInfo, err := setupKubernetes(ctx, logger, kubeconfig, resync, int64(listPageSize))
 	if err != nil {
 		logger.Error("failed to setup kubernetes client", "error", err)
 		os.Exit(1)

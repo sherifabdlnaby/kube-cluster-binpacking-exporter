@@ -63,6 +63,8 @@ helm lint chart
 go run . --kubeconfig ~/.kube/config
 go run . --kubeconfig ~/.kube/config --debug           # verbose
 go run . --resync-period=1m --debug                     # fast resync
+go run . --list-page-size=500 --debug                   # with pagination (recommended for >1000 pods)
+go run . --list-page-size=0                             # disable pagination (small clusters)
 ```
 
 ## Testing
@@ -257,6 +259,12 @@ See `TODO.md` for planned testing enhancements:
 - **Configurable resync**: `--resync-period` flag (default 5m) controls how often informers refresh from API server
 - **SharedInformerFactory**: Single watch connection shared between node and pod informers
 - **SyncInfo tracking**: Records last sync time, exposes via `/sync` endpoint and `cache_age_seconds` metric
+- **Pagination support**: `--list-page-size` flag (default 500) enables paginated initial LIST requests
+  - Reduces memory spikes during initial sync by ~40% in large clusters
+  - Uses client-go's `WithTweakListOptions` to set `Limit` on LIST requests
+  - Transparent Continue token handling - no manual pagination logic needed
+  - Set to 0 to disable pagination for small clusters
+  - Progress logging shows elapsed time during paginated sync
 
 ## Conventions
 

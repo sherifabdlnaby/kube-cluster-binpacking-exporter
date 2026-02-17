@@ -8,6 +8,7 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
@@ -28,7 +29,7 @@ type SyncInfo struct {
 	PodSynced    func() bool
 }
 
-func setupKubernetes(ctx context.Context, logger *slog.Logger, kubeconfigPath string, resyncPeriod time.Duration) (listerscorev1.NodeLister, listerscorev1.PodLister, ReadyChecker, *SyncInfo, error) {
+func setupKubernetes(ctx context.Context, logger *slog.Logger, kubeconfigPath string, resyncPeriod time.Duration, listPageSize int64) (listerscorev1.NodeLister, listerscorev1.PodLister, ReadyChecker, *SyncInfo, error) {
 	config, configSource, err := buildConfig(kubeconfigPath)
 	if err != nil {
 		return nil, nil, nil, nil, fmt.Errorf("building kubeconfig: %w", err)
@@ -54,7 +55,23 @@ func setupKubernetes(ctx context.Context, logger *slog.Logger, kubeconfigPath st
 		"version", serverVersion.String(),
 		"platform", serverVersion.Platform)
 
-	factory := informers.NewSharedInformerFactory(clientset, resyncPeriod)
+	// Create factory with or without pagination based on listPageSize
+	var factory informers.SharedInformerFactory
+	if listPageSize > 0 {
+		logger.Info("configuring informers with pagination",
+			"page_size", listPageSize)
+
+		factory = informers.NewSharedInformerFactoryWithOptions(
+			clientset,
+			resyncPeriod,
+			informers.WithTweakListOptions(func(opts *metav1.ListOptions) {
+				opts.Limit = listPageSize
+			}),
+		)
+	} else {
+		logger.Info("configuring informers without pagination")
+		factory = informers.NewSharedInformerFactory(clientset, resyncPeriod)
+	}
 
 	nodeInformer := factory.Core().V1().Nodes()
 	podInformer := factory.Core().V1().Pods()
@@ -108,15 +125,18 @@ func setupKubernetes(ctx context.Context, logger *slog.Logger, kubeconfigPath st
 	syncCtx, syncCancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer syncCancel()
 
+	startTime := time.Now()
 	go func() {
 		ticker := time.NewTicker(5 * time.Second)
 		defer ticker.Stop()
 		for {
 			select {
 			case <-ticker.C:
+				elapsed := time.Since(startTime)
 				logger.Info("still waiting for cache sync...",
 					"node_synced", nodeInformer.Informer().HasSynced(),
-					"pod_synced", podInformer.Informer().HasSynced())
+					"pod_synced", podInformer.Informer().HasSynced(),
+					"elapsed_seconds", int(elapsed.Seconds()))
 			case <-syncCtx.Done():
 				return
 			}
