@@ -7,7 +7,7 @@
 [![GitHub Release](https://img.shields.io/github/v/release/sherifabdlnaby/kube-cluster-binpacking-exporter)](https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter/releases/latest)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/sherifabdlnaby/kube-cluster-binpacking-exporter)](go.mod)
 [![Kubernetes](https://img.shields.io/badge/kubernetes-%3E%3D%201.29-blue?logo=kubernetes&logoColor=white)](https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter)
-[![Platforms](https://img.shields.io/badge/platforms-linux%2Famd64%20%7C%20linux%2Farm64-blue)](#building)
+[![Platforms](https://img.shields.io/badge/platforms-linux%2Famd64%20%7C%20linux%2Farm64-blue)](#development)
 [![License](https://img.shields.io/github/license/sherifabdlnaby/kube-cluster-binpacking-exporter)](LICENSE)
 
 Export straight-forward metrics to track Kubernetes cluster nodes binpacking effeciency, across individual nodes, by node groups (via Labels), or across the entire cluster. That are easier to aggregate over longer period of time.
@@ -127,7 +127,9 @@ Check Helm [values.yaml](./chart/values.yaml) for options.
 | `/readyz` | Readiness probe - returns 200 if informer cache is synced, 503 otherwise |
 | `/sync` | Cache sync status - returns JSON with last sync time, age, and sync state |
 
-## Building
+## Development
+
+### Build
 
 ```bash
 # Build binary
@@ -135,14 +137,59 @@ go build -o kube-cluster-binpacking-exporter .
 
 # Build Docker image
 docker build -t binpacking-exporter:dev .
-
-# Run tests (TODO)
-go test ./...
 ```
+
+### Test
+
+```bash
+# Run all tests
+go test -v ./...
+
+# Run tests with coverage
+go test -v -coverprofile=coverage.out ./...
+go tool cover -func=coverage.out          # summary
+go tool cover -html=coverage.out          # detailed HTML report
+
+# Run a specific test
+go test -v -run TestCalculatePodRequest
+
+# Race detector
+go test -race ./...
+```
+
+Tests use mock listers — no cluster required. See [TESTING.md](TESTING.md) for full details.
+
+### Lint & Verify
+
+```bash
+go vet ./...
+golangci-lint run
+helm lint chart
+```
+
+### Run Locally
+
+```bash
+# Basic (uses your current kubeconfig context)
+go run . --kubeconfig ~/.kube/config
+
+# Debug logging
+go run . --kubeconfig ~/.kube/config --log-level=debug
+
+# With label grouping
+go run . --kubeconfig ~/.kube/config \
+  --label-groups=topology.kubernetes.io/zone,node.kubernetes.io/instance-type
+```
+
+Once running, open `http://localhost:9101` for the homepage with links to all endpoints.
 
 ## Contributing
 
 See [TODO.md](TODO.md) for planned features and improvements.
+
+## Disclaimer
+
+This project was developed with the assistance of AI agents, specifically [Claude Code](https://docs.anthropic.com/en/docs/claude-code). All code has been reviewed and approved by the maintainer.
 
 ## License
 
