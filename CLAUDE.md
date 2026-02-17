@@ -23,7 +23,7 @@ Prometheus exporter that monitors Kubernetes cluster binpacking efficiency. Comp
 | `collector.go` | Prometheus collector | `Collect()` - computes metrics, `calculatePodRequest()` - init container logic |
 | `Dockerfile` | Container image | Multi-stage: `golang:1.25-alpine` → `distroless/static-debian12:nonroot` |
 | `charts/` | Helm deployment | RBAC (get/list/watch nodes+pods), ServiceMonitor, configurable resync period |
-| `.github/workflows/` | CI/CD | `ci.yaml` - build/vet/lint with Go module & build caching, `release.yaml` - GHCR push on tag |
+| `.github/workflows/` | CI/CD | `ci.yaml` - build/vet/lint/test with caching, `release.yaml` - multi-arch (amd64/arm64) GHCR push on tag |
 
 ## Metrics Exported
 
