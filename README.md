@@ -12,26 +12,37 @@
 
 Export straight-forward metrics to track Kubernetes cluster nodes binpacking effeciency, across individual nodes, by node groups (via Labels), or across the entire cluster. That are easier to aggregate over longer period of time.
 
-** What kind of metrics ?**: Calculate the % of **allocated** resources (via Requests) to **allocatable** resources. Used to track binpacking effecienty and scheduling fragmentation waste.
+**What kind of metrics ?**: Calculate the % of **allocated** resources (via Requests) to **allocatable** resources. Used to track binpacking effecienty and scheduling fragmentation waste.
 
-** Why not user Kube O11Y tools?** While the combination of `kube-state-metrics`, `kubelet` and `cAdvisor` metrics can be used it fall short because:
+**Why not user Kube O11Y tools?** While the combination of `kube-state-metrics`, `kubelet` and `cAdvisor` metrics can be used it fall short because:
 
 1. These metrics are pulled from different sources at different intervals. This causes aggregration to not give an accurate *snapshot* of the cluster and not reflecting accurate numbers, especially when tracking improvement overtime.
-  1. Inaccuracy is very high in highly-dynamic clusters with a lot pod movement.
+   1. Inaccuracy is very high in highly-dynamic clusters with a lot pod movement.
 2. Queries gets extremely complex ( e.g execlude failed & completed pods, handle init containers, complex `joins` to group by node labels )
 3. Some O11Y tools ( looking at you DD ) query language lacks the flexibility to accuratly combine and aggregate these metrics.
 
-** How is KCP better ?**: Mirror the clsuter state and returns an atomic snapshot of the cluster binpacking state on each scrape. It's like running [eks-node-viewer](https://github.com/awslabs/eks-node-viewer) in a loop.
+**How is KCP better ?**: Mirror the clsuter state and returns an atomic snapshot of the cluster binpacking state on each scrape. It's like running [eks-node-viewer](https://github.com/awslabs/eks-node-viewer) in a loop.
 
 ### Who typically uses KCP ?
 
-Anyone 🤷🏻‍♂️ But specifically Platform Engineers, and Cluster Adminstrators trying to optimize their Cluster Binpacking effecienty (e.g tinkering with https://karpenter.sh/docs/concepts/scheduling/ configurations) and want to track progress overtime.
+Anyone 🤷🏻‍♂️ But specifically Platform Engineers, and Cluster Adminstrators trying to optimize their Cluster Binpacking effecienty (e.g tinkering with [karpenter](https://karpenter.sh/docs/concepts/scheduling/) configurations) and want to track progress overtime.
 
 ### Out of scope
 
-KCP only concern is *Are Pod's _requests_ being satisified in the most effecient way possible. Tracking if pods are setting the correct requests, and if they are under-utilizing requests is out of the scope of this tool.
+KCP only concern is **Are Pod's _requests_ being satisified in the most effecient way possible**. Tracking if pods are setting the correct requests, and if they are under-utilizing requests is out of the scope of this tool.
 
-### Features Highlights
+# Installation
+
+**Helm (Recommended):**
+```bash
+helm install binpacking-exporter \
+  oci://ghcr.io/sherifabdlnaby/charts/kube-cluster-binpacking-exporter \
+  --version <check-releases>
+```
+
+Check Helm [values.yaml](./chart/values.yaml) for options, most importantly how your O11Y stack pull the metrics for `/metrics` ad `:9101`.
+
+## Features Highlights
 
 - **Informer-based**: Zero API calls per metric scrape — all data served from in-memory cache.
 - **Per-node and cluster-wide metrics**: Individual node utilization plus cluster aggregates.
@@ -45,17 +56,6 @@ KCP only concern is *Are Pod's _requests_ being satisified in the most effecient
 - Support more Node resources. (e.g `storage` and `gpu`)
 - Calculate Daemonset Overhead.
 - Advanced Label Grouping (Group by two labels values).
-
-# Installation
-
-**Helm (Recommended):**
-```bash
-helm install binpacking-exporter \
-  oci://ghcr.io/sherifabdlnaby/charts/kube-cluster-binpacking-exporter \
-  --version <check-releases>
-```
-
-Check Helm [values.yaml](./chart/values.yaml) for options, most importantly how your O11Y stack pull the metrics for `/metrics` ad `:9101`.
 
 
 ## Metrics
