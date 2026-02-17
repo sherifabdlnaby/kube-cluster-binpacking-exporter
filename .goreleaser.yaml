@@ -13,7 +13,7 @@ builds:
       - darwin
     goarch:
       - amd64
-      # TODO: re-enable multi-arch (arm64, arm/v7)
+      - arm64
     ldflags:
       - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
     binary: kube-cluster-binpacking-exporter
