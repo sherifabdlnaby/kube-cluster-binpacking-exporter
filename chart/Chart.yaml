@@ -2,7 +2,7 @@ apiVersion: v2
 name: kube-cluster-binpacking-exporter
 description: Prometheus exporter for Kubernetes cluster binpacking efficiency
 type: application
-version: 0.1.0
+version: 0.2.0
 appVersion: "0.1.0"
 icon: https://raw.githubusercontent.com/cncf/artwork/master/projects/kubernetes/icon/color/kubernetes-icon-color.svg
 keywords:

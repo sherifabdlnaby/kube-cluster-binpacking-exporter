@@ -50,8 +50,14 @@ spec:
             - --metrics-path={{ .Values.metricsPath }}
             - --resources={{ join "," .Values.resources }}
             - --resync-period={{ .Values.resyncPeriod }}
-            {{- if .Values.debug }}
-            - --debug
+            - --log-level={{ .Values.logLevel }}
+            - --log-format={{ .Values.logFormat }}
+            - --list-page-size={{ .Values.listPageSize }}
+            {{- if .Values.labelGroups }}
+            - --label-groups={{ join "," .Values.labelGroups }}
+            {{- end }}
+            {{- if .Values.disableNodeMetrics }}
+            - --disable-node-metrics
             {{- end }}
           ports:
             - name: metrics

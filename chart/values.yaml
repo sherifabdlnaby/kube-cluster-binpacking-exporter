@@ -17,11 +17,24 @@ resources:
 metricsPort: 9101
 metricsPath: /metrics
 
-# Enable debug logging
-debug: false
+# Logging configuration
+logLevel: info  # Options: debug, info, warn, error
+logFormat: json  # Options: json, text
 
 # Informer cache resync period (e.g., 1m, 5m, 1h30m)
 resyncPeriod: 5m
+
+# List page size for initial sync (0 = no pagination, recommended: 500 for >1000 pods)
+listPageSize: 500
+
+# Label-based grouping: list of node label keys to group by
+# Example: ["topology.kubernetes.io/zone", "node.kubernetes.io/instance-type"]
+# Enables per-zone, per-instance-type binpacking metrics
+labelGroups: []
+
+# Disable per-node metrics to reduce cardinality (only emit cluster-wide and label-group metrics)
+# Recommended for clusters with >100 nodes when only aggregate metrics are needed
+disableNodeMetrics: false
 
 serviceAccount:
   create: true
