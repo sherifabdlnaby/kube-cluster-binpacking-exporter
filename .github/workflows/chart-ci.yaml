@@ -39,8 +39,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # Need full history + ability to push on main
+          # Need write access to push auto-fix commits to PR branches
           token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.head_ref }}
 
       - uses: actions/setup-go@v5
         with:
@@ -50,12 +51,12 @@ jobs:
       - name: Install helm-docs
         run: go install github.com/norwoodj/helm-docs/cmd/helm-docs@v1.14.2
 
-      - name: Check chart/README.md is up to date (PRs)
-        if: github.event_name == 'pull_request'
+      - name: Check chart/README.md is up to date
+        if: github.event_name == 'push'
         run: make helm-docs-check
 
-      - name: Auto-commit updated README (on main)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      - name: Auto-fix chart/README.md (PRs)
+        if: github.event_name == 'pull_request'
         run: |
           make helm-docs
           if ! git diff --quiet chart/README.md; then
