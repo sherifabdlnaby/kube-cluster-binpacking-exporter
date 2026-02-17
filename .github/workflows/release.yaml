@@ -1,6 +1,6 @@
 name: Release
 
-# Single workflow: PR merge → semver tag → GoReleaser (binaries + Docker + GitHub Release) → Helm OCI push
+# Single workflow: PR merge → semver tag → GoReleaser (binaries + GitHub Release) → Docker → Helm OCI push
 # PR labels control version bump: major, minor, patch (default), skip-release
 # Manual trigger also supported via workflow_dispatch
 
@@ -159,7 +159,7 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      # ── GoReleaser (binaries + Docker images + GitHub Release) ────────
+      # ── GoReleaser (binaries + GitHub Release) ──────────────────────
       - name: Run GoReleaser
         if: steps.version.outputs.new_tag != ''
         uses: goreleaser/goreleaser-action@v6
@@ -169,6 +169,34 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── Docker (multi-arch, no per-arch tags) ────────────────────────
+      - name: Docker metadata
+        if: steps.version.outputs.new_tag != ''
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=semver,pattern={{version}},value=${{ steps.version.outputs.new_tag }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ steps.version.outputs.new_tag }}
+
+      - name: Build and push multi-arch image
+        if: steps.version.outputs.new_tag != ''
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ steps.version.outputs.new_tag }}
+            COMMIT=${{ github.sha }}
+            DATE=${{ github.event.head_commit.timestamp }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: false
 
       # ── Helm chart (OCI registry) ────────────────────────────────────
       - name: Set up Helm

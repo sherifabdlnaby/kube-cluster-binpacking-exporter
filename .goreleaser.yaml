@@ -50,53 +50,6 @@ checksum:
 snapshot:
   version_template: "{{ incpatch .Version }}-next"
 
-# ── Docker images (multi-arch via buildx) ────────────────────────────────
-dockers:
-  - image_templates:
-      - "ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{ .Version }}-amd64"
-    use: buildx
-    goarch: amd64
-    dockerfile: Dockerfile.goreleaser
-    build_flag_templates:
-      - "--pull"
-      - "--platform=linux/amd64"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.title={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--label=org.opencontainers.image.source=https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter"
-
-  - image_templates:
-      - "ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{ .Version }}-arm64"
-    use: buildx
-    goarch: arm64
-    dockerfile: Dockerfile.goreleaser
-    build_flag_templates:
-      - "--pull"
-      - "--platform=linux/arm64"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.title={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--label=org.opencontainers.image.source=https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter"
-
-# ── Multi-arch manifest lists ────────────────────────────────────────────
-docker_manifests:
-  - name_template: "ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{ .Version }}"
-    image_templates:
-      - "ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{ .Version }}-amd64"
-      - "ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{ .Version }}-arm64"
-
-  - name_template: "ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{ .Major }}.{{ .Minor }}"
-    image_templates:
-      - "ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{ .Version }}-amd64"
-      - "ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{ .Version }}-arm64"
-
-  - name_template: "ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:latest"
-    image_templates:
-      - "ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{ .Version }}-amd64"
-      - "ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{ .Version }}-arm64"
-
 # ── Changelog ────────────────────────────────────────────────────────────
 changelog:
   sort: asc
@@ -133,7 +86,7 @@ release:
   prerelease: auto
   mode: replace
   header: |
-    ## Kubernetes Cluster Binpacking Exporter {{.Tag}}
+    ## Kubernetes Cluster Binpacking Exporter `{{.Tag}}` 🚀
 
     Prometheus exporter for monitoring Kubernetes cluster binpacking efficiency.
 
