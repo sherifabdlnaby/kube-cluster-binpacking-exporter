@@ -27,7 +27,8 @@ func main() {
 		metricsAddr  string
 		metricsPath  string
 		resourceCSV  string
-		debug        bool
+		logLevel     string
+		logFormat    string
 		resyncPeriod string
 	)
 
@@ -35,16 +36,15 @@ func main() {
 	flag.StringVar(&metricsAddr, "metrics-addr", ":9101", "address to serve metrics on")
 	flag.StringVar(&metricsPath, "metrics-path", "/metrics", "HTTP path for metrics endpoint")
 	flag.StringVar(&resourceCSV, "resources", "cpu,memory", "comma-separated list of resources to track")
-	flag.BoolVar(&debug, "debug", false, "enable debug logging")
+	flag.StringVar(&logLevel, "log-level", "info", "log level: debug, info, warn, error")
+	flag.StringVar(&logFormat, "log-format", "json", "log format: json, text")
 	flag.StringVar(&resyncPeriod, "resync-period", "5m", "informer cache resync period (e.g., 1m, 30s, 1h30m)")
 	flag.Parse()
 
-	logLevel := slog.LevelInfo
-	if debug {
-		logLevel = slog.LevelDebug
-	}
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel}))
-	logger.Info("starting kube-cluster-binpacking-exporter", "version", version, "debug", debug)
+	level := parseLogLevel(logLevel)
+	handler := createLogHandler(logFormat, level)
+	logger := slog.New(handler)
+	logger.Info("starting kube-cluster-binpacking-exporter", "version", version, "log_level", logLevel, "log_format", logFormat)
 
 	resources := parseResources(resourceCSV)
 	logger.Info("tracking resources", "resources", resourceCSV)
@@ -153,6 +153,35 @@ func main() {
 	defer shutdownCancel()
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		logger.Error("http server shutdown error", "error", err)
+	}
+}
+
+func parseLogLevel(level string) slog.Level {
+	switch strings.ToLower(level) {
+	case "debug":
+		return slog.LevelDebug
+	case "info":
+		return slog.LevelInfo
+	case "warn":
+		return slog.LevelWarn
+	case "error":
+		return slog.LevelError
+	default:
+		fmt.Fprintf(os.Stderr, "invalid log level %q, using info\n", level)
+		return slog.LevelInfo
+	}
+}
+
+func createLogHandler(format string, level slog.Level) slog.Handler {
+	opts := &slog.HandlerOptions{Level: level}
+	switch strings.ToLower(format) {
+	case "text":
+		return slog.NewTextHandler(os.Stdout, opts)
+	case "json":
+		return slog.NewJSONHandler(os.Stdout, opts)
+	default:
+		fmt.Fprintf(os.Stderr, "invalid log format %q, using json\n", format)
+		return slog.NewJSONHandler(os.Stdout, opts)
 	}
 }
 
