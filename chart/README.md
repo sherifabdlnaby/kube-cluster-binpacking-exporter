@@ -76,7 +76,7 @@ helm uninstall kube-binpacking-exporter
 | labelGroups | list | `[]` | Node label keys to group metrics by. Enables per-zone, per-instance-type metrics. Example: `["topology.kubernetes.io/zone"]` |
 | leaderElection.enabled | bool | `false` | Enable leader election for HA active-passive mode. Only the leader publishes binpacking metrics. Auto-enabled when `replicaCount > 1` |
 | leaderElection.leaseDuration | string | `"15s"` | Duration that non-leader candidates will wait before attempting to acquire leadership |
-| leaderElection.leaseName | string | `"binpacking-exporter"` | Name of the Lease object used for leader election |
+| leaderElection.leaseName | string | `"kube-binpacking-exporter"` | Name of the Lease object used for leader election |
 | leaderElection.renewDeadline | string | `"10s"` | Duration that the leader will retry refreshing leadership before giving up |
 | leaderElection.retryPeriod | string | `"2s"` | Duration between leader election retries |
 | listPageSize | int | `500` | Page size for initial list calls. Use `0` to disable pagination. Recommended `500` for clusters with >1000 pods |
