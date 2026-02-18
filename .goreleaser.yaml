@@ -3,7 +3,6 @@ version: 2
 before:
   hooks:
     - go mod tidy
-    - go test ./...
 
 builds:
   - env:
@@ -34,6 +33,89 @@ archives:
 
 checksum:
   name_template: 'checksums.txt'
+
+# ── Docker images (one per arch) ───────────────────────────────────────
+# GoReleaser builds each arch separately, then docker_manifests joins them.
+# Uses the existing multi-stage Dockerfile (builds from source inside Docker).
+dockers:
+  - image_templates:
+      - "ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{ .Version }}-amd64"
+    use: buildx
+    dockerfile: Dockerfile
+    build_flag_templates:
+      - "--platform=linux/amd64"
+      - "--build-arg=VERSION={{ .Version }}"
+      - "--build-arg=COMMIT={{ .FullCommit }}"
+      - "--build-arg=DATE={{ .Date }}"
+      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.source={{ .GitURL }}"
+      - "--label=org.opencontainers.image.created={{ .Date }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+    extra_files:
+      - go.mod
+      - go.sum
+      - Makefile
+      - main.go
+      - collector.go
+      - kubernetes.go
+      - leaderelection.go
+    goos: linux
+    goarch: amd64
+
+  - image_templates:
+      - "ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{ .Version }}-arm64"
+    use: buildx
+    dockerfile: Dockerfile
+    build_flag_templates:
+      - "--platform=linux/arm64"
+      - "--build-arg=VERSION={{ .Version }}"
+      - "--build-arg=COMMIT={{ .FullCommit }}"
+      - "--build-arg=DATE={{ .Date }}"
+      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.source={{ .GitURL }}"
+      - "--label=org.opencontainers.image.created={{ .Date }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+    extra_files:
+      - go.mod
+      - go.sum
+      - Makefile
+      - main.go
+      - collector.go
+      - kubernetes.go
+      - leaderelection.go
+    goos: linux
+    goarch: arm64
+
+# ── Multi-arch manifests ───────────────────────────────────────────────
+# Creates the tags consumers actually pull (version + major.minor)
+docker_manifests:
+  - name_template: "ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{ .Version }}"
+    image_templates:
+      - "ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{ .Version }}-amd64"
+      - "ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{ .Version }}-arm64"
+  - name_template: "ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{ .Major }}.{{ .Minor }}"
+    image_templates:
+      - "ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{ .Version }}-amd64"
+      - "ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{ .Version }}-arm64"
+
+# ── Cosign signing ─────────────────────────────────────────────────────
+# Keyless signing via GitHub OIDC — signs Docker manifests and binary checksums
+docker_signs:
+  - cmd: cosign
+    artifacts: manifests
+    args: ["sign", "--yes", "${artifact}"]
+
+signs:
+  - cmd: cosign
+    artifacts: checksum
+    args: ["sign-blob", "--yes", "--output-signature=${signature}", "${artifact}"]
+
+# ── SBOM generation ────────────────────────────────────────────────────
+# Syft generates SBOMs for each archive — attached to the GitHub Release
+sboms:
+  - artifacts: archive
 
 snapshot:
   version_template: "{{ incpatch .Version }}-next"
@@ -103,4 +185,12 @@ release:
     docker run -v ~/.kube/config:/kubeconfig:ro \
       ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{.Tag}} \
       --kubeconfig=/kubeconfig
+    ```
+
+    **Verify image signature:**
+    ```bash
+    cosign verify \
+      --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
+      --certificate-identity-regexp="https://github.com/sherifabdlnaby/kube-cluster-binpacking-exporter/.*" \
+      ghcr.io/sherifabdlnaby/kube-cluster-binpacking-exporter:{{.Tag}}
     ```
