@@ -4,6 +4,7 @@ LABEL org.opencontainers.image.source="https://github.com/sherifabdlnaby/kube-cl
 LABEL org.opencontainers.image.description="Prometheus exporter for Kubernetes cluster binpacking efficiency"
 LABEL org.opencontainers.image.licenses="MIT"
 
-COPY kube-cluster-binpacking-exporter /binpacking-exporter
+ARG TARGETARCH
+COPY linux/${TARGETARCH}/kube-cluster-binpacking-exporter /binpacking-exporter
 
 ENTRYPOINT ["/binpacking-exporter"]
