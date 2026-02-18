@@ -1,6 +1,6 @@
 # Kube Binpacking Exporter Helm Chart
 
-Prometheus exporter for Kubernetes cluster binpacking efficiency metrics. Tracks resource allocation (CPU, memory, or any custom resource) by comparing pod requests against node allocatable capacity.
+Prometheus exporter for Kubernetes binpacking efficiency metrics. Tracks resource allocation (CPU, memory, or any custom resource) by comparing pod requests against node allocatable capacity.
 
 ## Features
 
@@ -15,11 +15,11 @@ Prometheus exporter for Kubernetes cluster binpacking efficiency metrics. Tracks
 
 ```bash
 # Install from OCI registry
-helm install binpacking-exporter \
+helm install kube-binpacking-exporter \
   oci://ghcr.io/sherifabdlnaby/charts/kube-binpacking-exporter
 
 # Install from local chart
-helm install binpacking-exporter ./chart
+helm install kube-binpacking-exporter ./chart
 ```
 
 ## Prerequisites
@@ -32,7 +32,7 @@ helm install binpacking-exporter ./chart
 ### From OCI Registry (Recommended)
 
 ```bash
-helm install binpacking-exporter \
+helm install kube-binpacking-exporter \
   oci://ghcr.io/sherifabdlnaby/charts/kube-binpacking-exporter \
   --version {{ template "chart.appVersion" . }}
 ```
@@ -42,13 +42,13 @@ helm install binpacking-exporter \
 ```bash
 git clone https://github.com/sherifabdlnaby/kube-binpacking-exporter.git
 cd kube-binpacking-exporter
-helm install binpacking-exporter ./chart
+helm install kube-binpacking-exporter ./chart
 ```
 
 ### With Custom Values
 
 ```bash
-helm install binpacking-exporter ./chart \
+helm install kube-binpacking-exporter ./chart \
   --set labelGroups[0]="topology.kubernetes.io/zone" \
   --set labelGroups[1]="node.kubernetes.io/instance-type" \
   --set logLevel=debug
@@ -57,7 +57,7 @@ helm install binpacking-exporter ./chart \
 ## Uninstalling the Chart
 
 ```bash
-helm uninstall binpacking-exporter
+helm uninstall kube-binpacking-exporter
 ```
 
 ## Parameters
@@ -71,7 +71,7 @@ helm uninstall binpacking-exporter
 Default installation with CPU and memory tracking:
 
 ```bash
-helm install binpacking-exporter ./chart
+helm install kube-binpacking-exporter ./chart
 ```
 
 ### Track Additional Resources (GPU)
@@ -94,8 +94,8 @@ labelGroups:
 
 This generates metrics like:
 ```
-binpacking_label_group_utilization_ratio{label_key="topology.kubernetes.io/zone",label_value="us-east-1a",resource="cpu"} 0.75
-binpacking_label_group_node_count{label_key="topology.kubernetes.io/zone",label_value="us-east-1a"} 3
+kube_binpacking_label_group_utilization_ratio{label_key="topology.kubernetes.io/zone",label_value="us-east-1a",resource="cpu"} 0.75
+kube_binpacking_label_group_node_count{label_key="topology.kubernetes.io/zone",label_value="us-east-1a"} 3
 ```
 
 ### Multi-Dimensional Grouping
@@ -144,8 +144,8 @@ podAnnotations:
         "instances": [
           {
             "openmetrics_endpoint": "http://%%host%%:9101/metrics",
-            "namespace": "binpacking",
-            "metrics": ["binpacking_.*"]
+            "namespace": "kube_binpacking",
+            "metrics": ["kube_binpacking_.*"]
           }
         ]
       }
@@ -154,18 +154,18 @@ podAnnotations:
 
 **What this does:**
 - Instructs the Datadog Agent to scrape `/metrics` on port `9101`
-- Collects all metrics matching `binpacking_.*`
-- Prefixes metrics in Datadog with `binpacking.` (from `namespace`)
+- Collects all metrics matching `kube_binpacking_.*`
+- Prefixes metrics in Datadog with `kube_binpacking.` (from `namespace`)
 - `%%host%%` resolves to the pod IP automatically — no service DNS needed
 
 **Datadog metric names after collection:**
 
 | Prometheus Metric | Datadog Metric |
 |-------------------|----------------|
-| `binpacking_node_utilization_ratio` | `binpacking.node.utilization_ratio` |
-| `binpacking_cluster_utilization_ratio` | `binpacking.cluster.utilization_ratio` |
-| `binpacking_cluster_allocated` | `binpacking.cluster.allocated` |
-| `binpacking_cache_age_seconds` | `binpacking.cache.age_seconds` |
+| `kube_binpacking_node_utilization_ratio` | `kube_binpacking.node.utilization_ratio` |
+| `kube_binpacking_cluster_utilization_ratio` | `kube_binpacking.cluster.utilization_ratio` |
+| `kube_binpacking_cluster_allocated` | `kube_binpacking.cluster.allocated` |
+| `kube_binpacking_cache_age_seconds` | `kube_binpacking.cache.age_seconds` |
 
 **Requirements:**
 - Datadog Agent 7.27+ (OpenMetrics v2)
@@ -188,9 +188,9 @@ All metrics are computed at scrape time from the informer cache (zero API calls 
 
 | Metric | Type | Labels | Description |
 |--------|------|--------|-------------|
-| `binpacking_node_allocated` | Gauge | `node`, `resource` | Total resource requests on node |
-| `binpacking_node_allocatable` | Gauge | `node`, `resource` | Total allocatable resource on node |
-| `binpacking_node_utilization_ratio` | Gauge | `node`, `resource` | Ratio of allocated to allocatable |
+| `kube_binpacking_node_allocated` | Gauge | `node`, `resource` | Total resource requests on node |
+| `kube_binpacking_node_allocatable` | Gauge | `node`, `resource` | Total allocatable resource on node |
+| `kube_binpacking_node_utilization_ratio` | Gauge | `node`, `resource` | Ratio of allocated to allocatable |
 
 **Note**: Disabled when `disableNodeMetrics: true`
 
@@ -198,19 +198,19 @@ All metrics are computed at scrape time from the informer cache (zero API calls 
 
 | Metric | Type | Labels | Description |
 |--------|------|--------|-------------|
-| `binpacking_cluster_allocated` | Gauge | `resource` | Cluster-wide total requests |
-| `binpacking_cluster_allocatable` | Gauge | `resource` | Cluster-wide total capacity |
-| `binpacking_cluster_utilization_ratio` | Gauge | `resource` | Cluster-wide ratio |
-| `binpacking_cluster_node_count` | Gauge | - | Total number of nodes |
+| `kube_binpacking_cluster_allocated` | Gauge | `resource` | Cluster-wide total requests |
+| `kube_binpacking_cluster_allocatable` | Gauge | `resource` | Cluster-wide total capacity |
+| `kube_binpacking_cluster_utilization_ratio` | Gauge | `resource` | Cluster-wide ratio |
+| `kube_binpacking_cluster_node_count` | Gauge | - | Total number of nodes |
 
 ### Label Group Metrics
 
 | Metric | Type | Labels | Description |
 |--------|------|--------|-------------|
-| `binpacking_label_group_allocated` | Gauge | `label_key`, `label_value`, `resource` | Total requests for label group |
-| `binpacking_label_group_allocatable` | Gauge | `label_key`, `label_value`, `resource` | Total capacity for label group |
-| `binpacking_label_group_utilization_ratio` | Gauge | `label_key`, `label_value`, `resource` | Ratio for label group |
-| `binpacking_label_group_node_count` | Gauge | `label_key`, `label_value` | Node count for label group |
+| `kube_binpacking_label_group_allocated` | Gauge | `label_key`, `label_value`, `resource` | Total requests for label group |
+| `kube_binpacking_label_group_allocatable` | Gauge | `label_key`, `label_value`, `resource` | Total capacity for label group |
+| `kube_binpacking_label_group_utilization_ratio` | Gauge | `label_key`, `label_value`, `resource` | Ratio for label group |
+| `kube_binpacking_label_group_node_count` | Gauge | `label_key`, `label_value` | Node count for label group |
 
 **Note**: Only emitted when `labelGroups` is configured
 
@@ -218,20 +218,20 @@ All metrics are computed at scrape time from the informer cache (zero API calls 
 
 | Metric | Type | Description |
 |--------|------|-------------|
-| `binpacking_cache_age_seconds` | Gauge | Time since last informer sync |
+| `kube_binpacking_cache_age_seconds` | Gauge | Time since last informer sync |
 
 ## PromQL Examples
 
 ### High Utilization Nodes
 
 ```promql
-binpacking_node_utilization_ratio{resource="cpu"} > 0.8
+kube_binpacking_node_utilization_ratio{resource="cpu"} > 0.8
 ```
 
 ### Per-Zone Utilization
 
 ```promql
-binpacking_label_group_utilization_ratio{
+kube_binpacking_label_group_utilization_ratio{
   label_key="topology.kubernetes.io/zone",
   resource="cpu"
 }
@@ -240,14 +240,14 @@ binpacking_label_group_utilization_ratio{
 ### Wasted Capacity (Low Utilization)
 
 ```promql
-binpacking_cluster_allocatable{resource="cpu"}
-- binpacking_cluster_allocated{resource="cpu"}
+kube_binpacking_cluster_allocatable{resource="cpu"}
+- kube_binpacking_cluster_allocated{resource="cpu"}
 ```
 
 ### Nodes Per Zone
 
 ```promql
-binpacking_label_group_node_count{label_key="topology.kubernetes.io/zone"}
+kube_binpacking_label_group_node_count{label_key="topology.kubernetes.io/zone"}
 ```
 
 ## Troubleshooting
@@ -261,7 +261,7 @@ kubectl logs -l app.kubernetes.io/name=kube-binpacking-exporter
 
 2. Verify service account has cluster-reader permissions:
 ```bash
-kubectl describe clusterrole binpacking-exporter
+kubectl describe clusterrole kube-binpacking-exporter
 ```
 
 ### No Metrics Showing
@@ -273,7 +273,7 @@ kubectl get pods -l app.kubernetes.io/name=kube-binpacking-exporter
 
 2. Check `/readyz` endpoint:
 ```bash
-kubectl port-forward svc/binpacking-exporter 9101:9101
+kubectl port-forward svc/kube-binpacking-exporter 9101:9101
 curl http://localhost:9101/readyz
 ```
 

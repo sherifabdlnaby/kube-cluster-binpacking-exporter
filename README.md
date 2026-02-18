@@ -31,7 +31,7 @@ Anyone 🤷🏻‍♂️ But specifically Platform Engineers, and Cluster Admini
 
 **Helm (Recommended):**
 ```bash
-helm install binpacking-exporter \
+helm install kube-binpacking-exporter \
   oci://ghcr.io/sherifabdlnaby/charts/kube-binpacking-exporter \
   --version <check-releases>
 ```
@@ -65,17 +65,17 @@ Resource allocation metrics use a `resource` label to identify the resource type
 
 | Metric | Type | Labels | Description |
 |--------|------|--------|-------------|
-| `binpacking_node_allocated` | Gauge | `node`, `resource` | Total resource requested by pods on this node |
-| `binpacking_node_allocatable` | Gauge | `node`, `resource` | Total allocatable resource on this node |
-| `binpacking_node_utilization_ratio` | Gauge | `node`, `resource` | Ratio of allocated to allocatable (0.0–1.0+) |
-| `binpacking_cluster_allocated` | Gauge | `resource` | Cluster-wide total resource requested |
-| `binpacking_cluster_allocatable` | Gauge | `resource` | Cluster-wide total allocatable resource |
-| `binpacking_cluster_utilization_ratio` | Gauge | `resource` | Cluster-wide allocation ratio |
-| `binpacking_cluster_node_count` | Gauge | - | Total number of nodes in the cluster |
-| `binpacking_label_group_allocated` | Gauge | `label_key`, `label_value`, `resource` | Total resource requested on nodes with this label value |
-| `binpacking_label_group_allocatable` | Gauge | `label_key`, `label_value`, `resource` | Total allocatable resource on nodes with this label value |
-| `binpacking_label_group_utilization_ratio` | Gauge | `label_key`, `label_value`, `resource` | Ratio for nodes with this label value (0.0–1.0) |
-| `binpacking_label_group_node_count` | Gauge | `label_key`, `label_value` | Number of nodes with this label value |
+| `kube_binpacking_node_allocated` | Gauge | `node`, `resource` | Total resource requested by pods on this node |
+| `kube_binpacking_node_allocatable` | Gauge | `node`, `resource` | Total allocatable resource on this node |
+| `kube_binpacking_node_utilization_ratio` | Gauge | `node`, `resource` | Ratio of allocated to allocatable (0.0–1.0+) |
+| `kube_binpacking_cluster_allocated` | Gauge | `resource` | Cluster-wide total resource requested |
+| `kube_binpacking_cluster_allocatable` | Gauge | `resource` | Cluster-wide total allocatable resource |
+| `kube_binpacking_cluster_utilization_ratio` | Gauge | `resource` | Cluster-wide allocation ratio |
+| `kube_binpacking_cluster_node_count` | Gauge | - | Total number of nodes in the cluster |
+| `kube_binpacking_label_group_allocated` | Gauge | `label_key`, `label_value`, `resource` | Total resource requested on nodes with this label value |
+| `kube_binpacking_label_group_allocatable` | Gauge | `label_key`, `label_value`, `resource` | Total allocatable resource on nodes with this label value |
+| `kube_binpacking_label_group_utilization_ratio` | Gauge | `label_key`, `label_value`, `resource` | Ratio for nodes with this label value (0.0–1.0) |
+| `kube_binpacking_label_group_node_count` | Gauge | `label_key`, `label_value` | Number of nodes with this label value |
 
 **Notes**:
 - Per-node metrics can be disabled via `--disable-node-metrics` to reduce cardinality in large clusters
@@ -84,22 +84,22 @@ Resource allocation metrics use a `resource` label to identify the resource type
 ### Example Output
 
 ```
-binpacking_node_allocated{node="worker-1",resource="cpu"} 3.5
-binpacking_node_allocatable{node="worker-1",resource="cpu"} 4
-binpacking_node_utilization_ratio{node="worker-1",resource="cpu"} 0.875
-binpacking_node_allocated{node="worker-1",resource="memory"} 4294967296
-binpacking_node_allocatable{node="worker-1",resource="memory"} 8589934592
-binpacking_node_utilization_ratio{node="worker-1",resource="memory"} 0.5
+kube_binpacking_node_allocated{node="worker-1",resource="cpu"} 3.5
+kube_binpacking_node_allocatable{node="worker-1",resource="cpu"} 4
+kube_binpacking_node_utilization_ratio{node="worker-1",resource="cpu"} 0.875
+kube_binpacking_node_allocated{node="worker-1",resource="memory"} 4294967296
+kube_binpacking_node_allocatable{node="worker-1",resource="memory"} 8589934592
+kube_binpacking_node_utilization_ratio{node="worker-1",resource="memory"} 0.5
 
-binpacking_cluster_allocated{resource="cpu"} 12.5
-binpacking_cluster_allocatable{resource="cpu"} 16
-binpacking_cluster_utilization_ratio{resource="cpu"} 0.78125
-binpacking_cluster_node_count 4
+kube_binpacking_cluster_allocated{resource="cpu"} 12.5
+kube_binpacking_cluster_allocatable{resource="cpu"} 16
+kube_binpacking_cluster_utilization_ratio{resource="cpu"} 0.78125
+kube_binpacking_cluster_node_count 4
 
-binpacking_label_group_allocated{label_key="topology.kubernetes.io/zone",label_value="us-east-1a",resource="cpu"} 6.5
-binpacking_label_group_allocatable{label_key="topology.kubernetes.io/zone",label_value="us-east-1a",resource="cpu"} 8
-binpacking_label_group_utilization_ratio{label_key="topology.kubernetes.io/zone",label_value="us-east-1a",resource="cpu"} 0.8125
-binpacking_label_group_node_count{label_key="topology.kubernetes.io/zone",label_value="us-east-1a"} 2
+kube_binpacking_label_group_allocated{label_key="topology.kubernetes.io/zone",label_value="us-east-1a",resource="cpu"} 6.5
+kube_binpacking_label_group_allocatable{label_key="topology.kubernetes.io/zone",label_value="us-east-1a",resource="cpu"} 8
+kube_binpacking_label_group_utilization_ratio{label_key="topology.kubernetes.io/zone",label_value="us-east-1a",resource="cpu"} 0.8125
+kube_binpacking_label_group_node_count{label_key="topology.kubernetes.io/zone",label_value="us-east-1a"} 2
 
 ```
 
@@ -139,7 +139,7 @@ Defaults to port `:9101`
 go build -o kube-binpacking-exporter .
 
 # Build Docker image
-docker build -t binpacking-exporter:dev .
+docker build -t kube-binpacking-exporter:dev .
 ```
 
 ### Test

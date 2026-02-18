@@ -23,14 +23,14 @@ RUN CGO_ENABLED=0 make build \
     VERSION=${VERSION} \
     COMMIT=${COMMIT} \
     DATE=${DATE} && \
-    mv kube-binpacking-exporter /binpacking-exporter
+    mv kube-binpacking-exporter /kube-binpacking-exporter
 
 FROM gcr.io/distroless/static-debian12:nonroot
 
 LABEL org.opencontainers.image.source="https://github.com/sherifabdlnaby/kube-binpacking-exporter"
-LABEL org.opencontainers.image.description="Prometheus exporter for Kubernetes cluster binpacking efficiency"
+LABEL org.opencontainers.image.description="Prometheus exporter for Kubernetes binpacking efficiency"
 LABEL org.opencontainers.image.licenses="MIT"
 
-COPY --from=builder /binpacking-exporter /binpacking-exporter
+COPY --from=builder /kube-binpacking-exporter /kube-binpacking-exporter
 
-ENTRYPOINT ["/binpacking-exporter"]
+ENTRYPOINT ["/kube-binpacking-exporter"]

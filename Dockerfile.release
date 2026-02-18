@@ -1,10 +1,10 @@
 FROM gcr.io/distroless/static-debian12:nonroot
 
 LABEL org.opencontainers.image.source="https://github.com/sherifabdlnaby/kube-binpacking-exporter"
-LABEL org.opencontainers.image.description="Prometheus exporter for Kubernetes cluster binpacking efficiency"
+LABEL org.opencontainers.image.description="Prometheus exporter for Kubernetes binpacking efficiency"
 LABEL org.opencontainers.image.licenses="MIT"
 
 ARG TARGETARCH
-COPY linux/${TARGETARCH}/kube-binpacking-exporter /binpacking-exporter
+COPY linux/${TARGETARCH}/kube-binpacking-exporter /kube-binpacking-exporter
 
-ENTRYPOINT ["/binpacking-exporter"]
+ENTRYPOINT ["/kube-binpacking-exporter"]

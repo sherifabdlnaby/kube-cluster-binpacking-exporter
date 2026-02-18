@@ -362,14 +362,14 @@ func TestBinpackingCollector_Collect(t *testing.T) {
 	foundCacheAge := false
 	for _, m := range metrics {
 		desc := m.Desc().String()
-		if contains(desc, "binpacking_cache_age_seconds") {
+		if contains(desc, "kube_binpacking_cache_age_seconds") {
 			foundCacheAge = true
 			// Note: Can't easily extract the value from prometheus.Metric without using testutil
 			break
 		}
 	}
 	if !foundCacheAge {
-		t.Error("expected binpacking_cache_age_seconds metric but didn't find it")
+		t.Error("expected kube_binpacking_cache_age_seconds metric but didn't find it")
 	}
 
 	// Count metric types
@@ -377,19 +377,19 @@ func TestBinpackingCollector_Collect(t *testing.T) {
 	for _, m := range metrics {
 		desc := m.Desc().String()
 		switch {
-		case contains(desc, "binpacking_node_allocated"):
+		case contains(desc, "kube_binpacking_node_allocated"):
 			metricCounts["node_allocated"]++
-		case contains(desc, "binpacking_node_allocatable"):
+		case contains(desc, "kube_binpacking_node_allocatable"):
 			metricCounts["node_allocatable"]++
-		case contains(desc, "binpacking_node_utilization_ratio"):
+		case contains(desc, "kube_binpacking_node_utilization_ratio"):
 			metricCounts["node_utilization"]++
-		case contains(desc, "binpacking_cluster_allocated"):
+		case contains(desc, "kube_binpacking_cluster_allocated"):
 			metricCounts["cluster_allocated"]++
-		case contains(desc, "binpacking_cluster_allocatable"):
+		case contains(desc, "kube_binpacking_cluster_allocatable"):
 			metricCounts["cluster_allocatable"]++
-		case contains(desc, "binpacking_cluster_utilization_ratio"):
+		case contains(desc, "kube_binpacking_cluster_utilization_ratio"):
 			metricCounts["cluster_utilization"]++
-		case contains(desc, "binpacking_cache_age_seconds"):
+		case contains(desc, "kube_binpacking_cache_age_seconds"):
 			metricCounts["cache_age"]++
 		}
 	}
@@ -479,7 +479,7 @@ func TestBinpackingCollector_PodFiltering(t *testing.T) {
 			foundNodeAllocated := false
 			for _, m := range metrics {
 				desc := m.Desc().String()
-				if contains(desc, "binpacking_node_allocated") {
+				if contains(desc, "kube_binpacking_node_allocated") {
 					foundNodeAllocated = true
 					// We can't easily extract the exact value, but the test logic is correct
 				}
@@ -818,9 +818,9 @@ func TestBinpackingCollector_LabelGrouping(t *testing.T) {
 		desc := m.Desc().String()
 
 		// Check if this is a label group metric
-		if stringContains(desc, "binpacking_label_group_allocated") ||
-			stringContains(desc, "binpacking_label_group_allocatable") ||
-			stringContains(desc, "binpacking_label_group_utilization_ratio") {
+		if stringContains(desc, "kube_binpacking_label_group_allocated") ||
+			stringContains(desc, "kube_binpacking_label_group_allocatable") ||
+			stringContains(desc, "kube_binpacking_label_group_utilization_ratio") {
 
 			// Just verify we got label group metrics
 			if labelGroupMetrics["found"] == nil {
@@ -888,10 +888,10 @@ func TestBinpackingCollector_DisableNodeMetrics(t *testing.T) {
 	var nodeMetricCount, clusterMetricCount int
 	for m := range ch {
 		desc := m.Desc().String()
-		if stringContains(desc, "binpacking_node_") {
+		if stringContains(desc, "kube_binpacking_node_") {
 			nodeMetricCount++
 		}
-		if stringContains(desc, "binpacking_cluster_") {
+		if stringContains(desc, "kube_binpacking_cluster_") {
 			clusterMetricCount++
 		}
 	}
@@ -950,7 +950,7 @@ func TestBinpackingCollector_EnableNodeMetrics(t *testing.T) {
 	var nodeMetricCount int
 	for m := range ch {
 		desc := m.Desc().String()
-		if stringContains(desc, "binpacking_node_") {
+		if stringContains(desc, "kube_binpacking_node_") {
 			nodeMetricCount++
 		}
 	}
@@ -997,7 +997,7 @@ func TestBinpackingCollector_LabelGrouping_NoLabels(t *testing.T) {
 	// Verify no label group metrics
 	for m := range ch {
 		desc := m.Desc().String()
-		if stringContains(desc, "binpacking_label_group") {
+		if stringContains(desc, "kube_binpacking_label_group") {
 			t.Error("Expected no label group metrics when label groups not configured")
 		}
 	}
@@ -1028,13 +1028,13 @@ func TestBinpackingCollector_LeaderElection_Disabled(t *testing.T) {
 	var hasLeaderStatus, hasClusterAllocated, hasCacheAge bool
 	for m := range ch {
 		desc := m.Desc().String()
-		if contains(desc, "binpacking_leader_status") {
+		if contains(desc, "kube_binpacking_leader_status") {
 			hasLeaderStatus = true
 		}
-		if contains(desc, "binpacking_cluster_allocated") {
+		if contains(desc, "kube_binpacking_cluster_allocated") {
 			hasClusterAllocated = true
 		}
-		if contains(desc, "binpacking_cache_age_seconds") {
+		if contains(desc, "kube_binpacking_cache_age_seconds") {
 			hasCacheAge = true
 		}
 	}
@@ -1078,16 +1078,16 @@ func TestBinpackingCollector_LeaderElection_IsLeader(t *testing.T) {
 	var hasLeaderStatus, hasClusterAllocated, hasNodeAllocated, hasCacheAge bool
 	for m := range ch {
 		desc := m.Desc().String()
-		if contains(desc, "binpacking_leader_status") {
+		if contains(desc, "kube_binpacking_leader_status") {
 			hasLeaderStatus = true
 		}
-		if contains(desc, "binpacking_cluster_allocated") {
+		if contains(desc, "kube_binpacking_cluster_allocated") {
 			hasClusterAllocated = true
 		}
-		if contains(desc, "binpacking_node_allocated") {
+		if contains(desc, "kube_binpacking_node_allocated") {
 			hasNodeAllocated = true
 		}
-		if contains(desc, "binpacking_cache_age_seconds") {
+		if contains(desc, "kube_binpacking_cache_age_seconds") {
 			hasCacheAge = true
 		}
 	}
@@ -1136,16 +1136,16 @@ func TestBinpackingCollector_LeaderElection_IsStandby(t *testing.T) {
 	for m := range ch {
 		metricCount++
 		desc := m.Desc().String()
-		if contains(desc, "binpacking_leader_status") {
+		if contains(desc, "kube_binpacking_leader_status") {
 			hasLeaderStatus = true
 		}
-		if contains(desc, "binpacking_cluster_allocated") {
+		if contains(desc, "kube_binpacking_cluster_allocated") {
 			hasClusterAllocated = true
 		}
-		if contains(desc, "binpacking_node_allocated") {
+		if contains(desc, "kube_binpacking_node_allocated") {
 			hasNodeAllocated = true
 		}
-		if contains(desc, "binpacking_cache_age_seconds") {
+		if contains(desc, "kube_binpacking_cache_age_seconds") {
 			hasCacheAge = true
 		}
 	}

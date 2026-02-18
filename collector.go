@@ -14,67 +14,67 @@ import (
 
 var (
 	nodeAllocated = prometheus.NewDesc(
-		"binpacking_node_allocated",
+		"kube_binpacking_node_allocated",
 		"Total resource requested by pods on this node",
 		[]string{"node", "resource"}, nil,
 	)
 	nodeAllocatable = prometheus.NewDesc(
-		"binpacking_node_allocatable",
+		"kube_binpacking_node_allocatable",
 		"Total allocatable resource on this node",
 		[]string{"node", "resource"}, nil,
 	)
 	nodeUtilization = prometheus.NewDesc(
-		"binpacking_node_utilization_ratio",
+		"kube_binpacking_node_utilization_ratio",
 		"Ratio of allocated to allocatable (0.0-1.0+)",
 		[]string{"node", "resource"}, nil,
 	)
 	clusterAllocated = prometheus.NewDesc(
-		"binpacking_cluster_allocated",
+		"kube_binpacking_cluster_allocated",
 		"Cluster-wide total resource requested",
 		[]string{"resource"}, nil,
 	)
 	clusterAllocatable = prometheus.NewDesc(
-		"binpacking_cluster_allocatable",
+		"kube_binpacking_cluster_allocatable",
 		"Cluster-wide total allocatable resource",
 		[]string{"resource"}, nil,
 	)
 	clusterUtilization = prometheus.NewDesc(
-		"binpacking_cluster_utilization_ratio",
+		"kube_binpacking_cluster_utilization_ratio",
 		"Cluster-wide allocation ratio",
 		[]string{"resource"}, nil,
 	)
 	labelGroupAllocated = prometheus.NewDesc(
-		"binpacking_label_group_allocated",
+		"kube_binpacking_label_group_allocated",
 		"Total resource requested by pods on nodes with this label value",
 		[]string{"label_key", "label_value", "resource"}, nil,
 	)
 	labelGroupAllocatable = prometheus.NewDesc(
-		"binpacking_label_group_allocatable",
+		"kube_binpacking_label_group_allocatable",
 		"Total allocatable resource on nodes with this label value",
 		[]string{"label_key", "label_value", "resource"}, nil,
 	)
 	labelGroupUtilization = prometheus.NewDesc(
-		"binpacking_label_group_utilization_ratio",
+		"kube_binpacking_label_group_utilization_ratio",
 		"Ratio of allocated to allocatable for nodes with this label value (0.0-1.0+)",
 		[]string{"label_key", "label_value", "resource"}, nil,
 	)
 	labelGroupNodeCount = prometheus.NewDesc(
-		"binpacking_label_group_node_count",
+		"kube_binpacking_label_group_node_count",
 		"Number of nodes with this label value",
 		[]string{"label_key", "label_value"}, nil,
 	)
 	clusterNodeCount = prometheus.NewDesc(
-		"binpacking_cluster_node_count",
+		"kube_binpacking_cluster_node_count",
 		"Total number of nodes in the cluster",
 		nil, nil,
 	)
 	cacheAge = prometheus.NewDesc(
-		"binpacking_cache_age_seconds",
+		"kube_binpacking_cache_age_seconds",
 		"Time since last informer cache sync",
 		nil, nil,
 	)
 	leaderStatus = prometheus.NewDesc(
-		"binpacking_leader_status",
+		"kube_binpacking_leader_status",
 		"Whether this instance is the leader (1) or standby (0). Only present when leader election is enabled",
 		nil, nil,
 	)

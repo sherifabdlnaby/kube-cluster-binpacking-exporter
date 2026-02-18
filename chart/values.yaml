@@ -47,7 +47,7 @@ leaderElection:
   # -- Enable leader election for HA active-passive mode. Only the leader publishes binpacking metrics. Auto-enabled when `replicaCount > 1`
   enabled: false
   # -- Name of the Lease object used for leader election
-  leaseName: binpacking-exporter
+  leaseName: kube-binpacking-exporter
   # -- Duration that non-leader candidates will wait before attempting to acquire leadership
   leaseDuration: 15s
   # -- Duration that the leader will retry refreshing leadership before giving up

@@ -55,7 +55,7 @@ func main() {
 	flag.StringVar(&resyncPeriod, "resync-period", "30m", "informer cache resync period (e.g., 1m, 30s, 1h30m)")
 	flag.IntVar(&listPageSize, "list-page-size", 500, "number of resources to fetch per page during initial sync (0 = no pagination)")
 	flag.BoolVar(&leaderElect, "leader-election", false, "enable leader election for HA (only the leader publishes binpacking metrics)")
-	flag.StringVar(&leaderElectLeaseName, "leader-election-lease-name", "binpacking-exporter", "name of the Lease object used for leader election")
+	flag.StringVar(&leaderElectLeaseName, "leader-election-lease-name", "kube-binpacking-exporter", "name of the Lease object used for leader election")
 	flag.StringVar(&leaderElectNamespace, "leader-election-namespace", "", "namespace for the leader election Lease (auto-detected from service account if empty)")
 	flag.StringVar(&leaderElectID, "leader-election-id", "", "unique identity for this participant in leader election (defaults to hostname)")
 	flag.StringVar(&leaderElectLeaseDuration, "leader-election-lease-duration", "15s", "duration that non-leader candidates will wait before attempting to acquire leadership")

@@ -105,12 +105,12 @@ helm-lint:
 
 helm-template:
 	@echo "Validating template rendering..."
-	helm template binpacking-exporter chart/ > /dev/null
+	helm template kube-binpacking-exporter chart/ > /dev/null
 	@echo "✓ Chart templates render successfully"
 
 helm-schema:
 	@echo "Verifying schema rejects invalid values..."
-	@! helm template binpacking-exporter chart/ --set logLevel=invalid-level > /dev/null 2>&1 \
+	@! helm template kube-binpacking-exporter chart/ --set logLevel=invalid-level > /dev/null 2>&1 \
 		&& echo "✓ Schema correctly rejects invalid values" \
 		|| (echo "✗ Schema should have rejected logLevel=invalid-level" && exit 1)
 

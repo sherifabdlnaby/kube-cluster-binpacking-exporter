@@ -78,14 +78,14 @@ jobs:
           context: .
           push: false
           load: true
-          tags: binpacking-exporter:scan
+          tags: kube-binpacking-exporter:scan
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Run Trivy image scan
         uses: aquasecurity/trivy-action@0.34.0
         with:
-          image-ref: binpacking-exporter:scan
+          image-ref: kube-binpacking-exporter:scan
           format: sarif
           output: trivy-image.sarif
           severity: CRITICAL,HIGH

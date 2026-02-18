@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Prometheus exporter that monitors Kubernetes cluster binpacking efficiency. Compares pod resource requests against node allocatable capacity using informer-based caching (zero API calls per scrape).
+Prometheus exporter that monitors Kubernetes binpacking efficiency. Compares pod resource requests against node allocatable capacity using informer-based caching (zero API calls per scrape).
 
 **Purpose**: Helps identify scheduling inefficiency by showing how well pods are packed onto nodes. High allocatable with low allocated means wasted capacity. High allocated means good utilization.
 
@@ -32,18 +32,18 @@ All metrics computed at scrape time from informer cache:
 
 | Metric | Type | Labels | Purpose |
 |--------|------|--------|---------|
-| `binpacking_node_allocated` | Gauge | `node`, `resource` | Total resource requests on node |
-| `binpacking_node_allocatable` | Gauge | `node`, `resource` | Node capacity |
-| `binpacking_node_utilization_ratio` | Gauge | `node`, `resource` | allocated / allocatable (0.0-1.0+) |
-| `binpacking_cluster_allocated` | Gauge | `resource` | Cluster-wide total requests |
-| `binpacking_cluster_allocatable` | Gauge | `resource` | Cluster-wide capacity |
-| `binpacking_cluster_utilization_ratio` | Gauge | `resource` | Cluster-wide ratio |
-| `binpacking_cluster_node_count` | Gauge | - | Total number of nodes in cluster |
-| `binpacking_label_group_allocated` | Gauge | `label_key`, `label_value`, `resource` | Total requests on nodes with label value (only if `--label-groups` set) |
-| `binpacking_label_group_allocatable` | Gauge | `label_key`, `label_value`, `resource` | Total capacity on nodes with label value (only if `--label-groups` set) |
-| `binpacking_label_group_utilization_ratio` | Gauge | `label_key`, `label_value`, `resource` | Ratio for nodes with label value (only if `--label-groups` set) |
-| `binpacking_label_group_node_count` | Gauge | `label_key`, `label_value` | Node count for label value (only if `--label-groups` set) |
-| `binpacking_cache_age_seconds` | Gauge | - | Time since last informer sync |
+| `kube_binpacking_node_allocated` | Gauge | `node`, `resource` | Total resource requests on node |
+| `kube_binpacking_node_allocatable` | Gauge | `node`, `resource` | Node capacity |
+| `kube_binpacking_node_utilization_ratio` | Gauge | `node`, `resource` | allocated / allocatable (0.0-1.0+) |
+| `kube_binpacking_cluster_allocated` | Gauge | `resource` | Cluster-wide total requests |
+| `kube_binpacking_cluster_allocatable` | Gauge | `resource` | Cluster-wide capacity |
+| `kube_binpacking_cluster_utilization_ratio` | Gauge | `resource` | Cluster-wide ratio |
+| `kube_binpacking_cluster_node_count` | Gauge | - | Total number of nodes in cluster |
+| `kube_binpacking_label_group_allocated` | Gauge | `label_key`, `label_value`, `resource` | Total requests on nodes with label value (only if `--label-groups` set) |
+| `kube_binpacking_label_group_allocatable` | Gauge | `label_key`, `label_value`, `resource` | Total capacity on nodes with label value (only if `--label-groups` set) |
+| `kube_binpacking_label_group_utilization_ratio` | Gauge | `label_key`, `label_value`, `resource` | Ratio for nodes with label value (only if `--label-groups` set) |
+| `kube_binpacking_label_group_node_count` | Gauge | `label_key`, `label_value` | Node count for label value (only if `--label-groups` set) |
+| `kube_binpacking_cache_age_seconds` | Gauge | - | Time since last informer sync |
 
 ## HTTP Endpoints
 
@@ -115,7 +115,7 @@ See [TESTING.md](TESTING.md) for detailed test infrastructure, conventions, help
 ### Naming
 - **Flags**: Use `--kebab-case` (Go `flag` package standard)
 - **Helm templates**: Use `kube-binpacking-exporter.*` helper prefix for consistency
-- **Metrics**: All prefixed with `binpacking_` for namespacing
+- **Metrics**: All prefixed with `kube_binpacking_` for namespacing
 - **Port**: 9101 (avoids collision with node-exporter on 9100, Prometheus on 9090)
 
 ### Commit Messages
@@ -173,7 +173,7 @@ No controller-runtime, no operator SDK — just the essentials.
 - **Helm**: `oci://ghcr.io/sherifabdlnaby/charts/kube-binpacking-exporter:1.2.3`
 - **Binaries**: Linux/macOS/Windows (multiple architectures)
 
-**Install**: `helm install binpacking-exporter oci://ghcr.io/sherifabdlnaby/charts/kube-binpacking-exporter`
+**Install**: `helm install kube-binpacking-exporter oci://ghcr.io/sherifabdlnaby/charts/kube-binpacking-exporter`
 
 **Manual** (if needed): `git tag v1.0.0 && git push origin v1.0.0`
 
