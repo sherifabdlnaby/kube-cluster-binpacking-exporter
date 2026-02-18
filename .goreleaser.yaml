@@ -50,7 +50,7 @@ dockers_v2:
       - linux/arm64
     labels:
       "org.opencontainers.image.title": "{{ .ProjectName }}"
-      "org.opencontainers.image.description": "Prometheus exporter for Kubernetes cluster binpacking efficiency"
+      "org.opencontainers.image.description": "Prometheus exporter for Kubernetes binpacking efficiency"
       "org.opencontainers.image.version": "{{ .Version }}"
       "org.opencontainers.image.source": "{{ .GitURL }}"
       "org.opencontainers.image.licenses": "MIT"
@@ -129,7 +129,7 @@ release:
 
     **Helm (Recommended):**
     ```bash
-    helm install binpacking-exporter \
+    helm install kube-binpacking-exporter \
       oci://ghcr.io/sherifabdlnaby/charts/kube-binpacking-exporter \
       --version {{.Version}}
     ```

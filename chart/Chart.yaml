@@ -1,6 +1,6 @@
 apiVersion: v2
 name: kube-binpacking-exporter
-description: Prometheus exporter for Kubernetes cluster binpacking efficiency
+description: Prometheus exporter for Kubernetes binpacking efficiency
 type: application
 kubeVersion: ">= 1.29.0-0"
 # Version is set to 0.0.0 in the repository. The actual version is injected
