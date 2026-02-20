@@ -43,8 +43,9 @@ dockers_v2:
     images:
       - "ghcr.io/sherifabdlnaby/kube-binpacking-exporter"
     tags:
-      - "{{ .Version }}"
-      - "{{ .Major }}.{{ .Minor }}"
+      - "{{ .Tag }}"
+      - "{{- if not .Prerelease }}v{{ .Major }}.{{ .Minor }}{{ end }}"
+      - "{{- if not .Prerelease }}v{{ .Major }}{{ end }}"
     platforms:
       - linux/amd64
       - linux/arm64
@@ -147,10 +148,17 @@ release:
       --kubeconfig=/kubeconfig
     ```
 
-    **Verify image signature:**
+    **Verify signatures:**
     ```bash
+    # Docker image
     cosign verify \
       --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
       --certificate-identity-regexp="https://github.com/sherifabdlnaby/kube-binpacking-exporter/.*" \
       ghcr.io/sherifabdlnaby/kube-binpacking-exporter:{{.Tag}}
+
+    # Helm chart
+    cosign verify \
+      --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
+      --certificate-identity-regexp="https://github.com/sherifabdlnaby/kube-binpacking-exporter/.*" \
+      ghcr.io/sherifabdlnaby/charts/kube-binpacking-exporter:{{.Version}}
     ```
