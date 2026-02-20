@@ -55,13 +55,6 @@ jobs:
       - name: Run govulncheck
         run: govulncheck ./...
 
-      - name: Cache Trivy DB
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/trivy
-          key: trivy-db-${{ runner.os }}-${{ github.run_id }}
-          restore-keys: trivy-db-${{ runner.os }}-
-
       - name: Run Trivy filesystem scan
         uses: aquasecurity/trivy-action@0.34.0
         with:
@@ -97,13 +90,6 @@ jobs:
           tags: kube-binpacking-exporter:scan
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      - name: Cache Trivy DB
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/trivy
-          key: trivy-db-${{ runner.os }}-${{ github.run_id }}
-          restore-keys: trivy-db-${{ runner.os }}-
 
       - name: Run Trivy image scan
         uses: aquasecurity/trivy-action@0.34.0

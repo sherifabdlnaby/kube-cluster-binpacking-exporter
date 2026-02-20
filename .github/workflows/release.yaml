@@ -194,14 +194,6 @@ jobs:
           subject-checksums: ./dist/checksums.txt
 
       # ── Security scan (released image) ──────────────────────────────
-      - name: Cache Trivy DB
-        if: steps.version.outputs.new_tag != ''
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/trivy
-          key: trivy-db-${{ runner.os }}-${{ github.run_id }}
-          restore-keys: trivy-db-${{ runner.os }}-
-
       - name: Scan released image with Trivy
         if: steps.version.outputs.new_tag != ''
         uses: aquasecurity/trivy-action@0.34.0
