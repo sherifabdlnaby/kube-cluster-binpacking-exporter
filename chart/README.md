@@ -1,10 +1,10 @@
 # Kube Binpacking Exporter Helm Chart
 
-Exporter for pre-computed Kubernetes Binpacking Effecieny Metrics metrics. Tracks resource allocation (CPU, memory, or any custom resource) by comparing pod requests against node allocatable capacity.
+Exporter for pre-computed Kubernetes Binpacking Effecieny Metrics metrics. Tracks resource allocation (CPU and memory) by comparing pod requests against node allocatable capacity.
 
 ## Features
 
-- **Resource-agnostic**: Track CPU, memory, GPU, or any custom resource
+- **Resource tracking**: Track CPU and memory allocation efficiency
 - **Multi-dimensional metrics**: Per-node, cluster-wide, and combination label grouping
 - **Zero API overhead**: Informer-based caching with zero API calls per scrape
 - **Cardinality control**: Optional per-node metrics disable for large clusters
@@ -118,15 +118,6 @@ Default installation with CPU and memory tracking:
 
 ```bash
 helm install kube-binpacking-exporter ./chart
-```
-
-### Track Additional Resources (GPU)
-
-```yaml
-resources:
-  - cpu
-  - memory
-  - nvidia.com/gpu
 ```
 
 ### Combination Label Grouping (Per-Zone Metrics)
