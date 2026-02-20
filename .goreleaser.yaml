@@ -50,13 +50,27 @@ dockers_v2:
       - linux/amd64
       - linux/arm64
     annotations:
+      # OCI standard
       "org.opencontainers.image.title": "{{ .ProjectName }}"
-      "org.opencontainers.image.description": "Exporter for pre-computed Kubernetes Binpacking Effecieny Metrics"
+      "org.opencontainers.image.description": "Exporter for pre-computed Kubernetes Binpacking Efficiency Metrics"
+      "org.opencontainers.image.version": "{{ .Version }}"
+      "org.opencontainers.image.source": "{{ .GitURL }}"
+      "org.opencontainers.image.url": "https://github.com/sherifabdlnaby/kube-binpacking-exporter"
+      "org.opencontainers.image.documentation": "https://github.com/sherifabdlnaby/kube-binpacking-exporter/blob/main/README.md"
+      "org.opencontainers.image.licenses": "MIT"
+      "org.opencontainers.image.vendor": "sherifabdlnaby"
       "org.opencontainers.image.created": "{{ .Date }}"
+      "org.opencontainers.image.revision": "{{ .FullCommit }}"
+      # Artifact Hub
       "io.artifacthub.package.readme-url": "https://raw.githubusercontent.com/sherifabdlnaby/kube-binpacking-exporter/main/README.md"
+      "io.artifacthub.package.license": "MIT"
+      "io.artifacthub.package.category": "monitoring-logging"
+      "io.artifacthub.package.keywords": "kubernetes,binpacking,exporter,monitoring,metrics"
+      "io.artifacthub.package.prerelease": "{{ if .Prerelease }}true{{ else }}false{{ end }}"
+      "io.artifacthub.package.maintainers": '[{"name":"sherifabdlnaby","email":"sherifabdlnaby@gmail.com"}]'
     labels:
       "org.opencontainers.image.title": "{{ .ProjectName }}"
-      "org.opencontainers.image.description": "Exporter for pre-computed Kubernetes Binpacking Effecieny Metrics"
+      "org.opencontainers.image.description": "Exporter for pre-computed Kubernetes Binpacking Efficiency Metrics"
       "org.opencontainers.image.version": "{{ .Version }}"
       "org.opencontainers.image.source": "{{ .GitURL }}"
       "org.opencontainers.image.licenses": "MIT"
