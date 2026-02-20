@@ -44,8 +44,17 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - name: Cache helm-docs
+        uses: actions/cache@v4
+        with:
+          path: ~/go/bin/helm-docs
+          key: helm-docs-${{ runner.os }}-v1.14.2
+
       - name: Install helm-docs
-        run: go install github.com/norwoodj/helm-docs/cmd/helm-docs@v1.14.2
+        run: |
+          if ! command -v helm-docs &>/dev/null; then
+            go install github.com/norwoodj/helm-docs/cmd/helm-docs@v1.14.2
+          fi
 
       - name: Check chart/README.md is up to date
         run: make helm-docs-check
