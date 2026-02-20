@@ -49,8 +49,8 @@ helm install kube-binpacking-exporter ./chart
 
 ```bash
 helm install kube-binpacking-exporter ./chart \
-  --set labelGroups[0]="topology.kubernetes.io/zone" \
-  --set labelGroups[1]="node.kubernetes.io/instance-type" \
+  --set labelGroups[0]="topology.kubernetes.io/zone,node.kubernetes.io/instance-type" \
+  --set labelGroups[1]="topology.kubernetes.io/zone" \
   --set logLevel=debug
 ```
 
@@ -73,7 +73,7 @@ helm uninstall kube-binpacking-exporter
 | image.repository | string | `"ghcr.io/sherifabdlnaby/kube-binpacking-exporter"` | Container image repository |
 | image.tag | string | `""` | Image tag. Defaults to the chart's `appVersion` when empty |
 | imagePullSecrets | list | `[]` | Image pull secrets for private registries |
-| labelGroups | list | `[]` | Node label keys to group metrics by. Enables per-zone, per-instance-type metrics. Example: `["topology.kubernetes.io/zone"]` |
+| labelGroups | list | `[]` | Label groups for combination grouping. Each entry is a comma-separated list of label keys defining one group. Example: `["topology.kubernetes.io/zone,node.kubernetes.io/instance-type", "topology.kubernetes.io/zone"]` |
 | leaderElection.enabled | bool | `false` | Enable leader election for HA active-passive mode. Only the leader publishes binpacking metrics. Auto-enabled when `replicaCount > 1` |
 | leaderElection.leaseDuration | string | `"15s"` | Duration that non-leader candidates will wait before attempting to acquire leadership |
 | leaderElection.leaseName | string | `"kube-binpacking-exporter"` | Name of the Lease object used for leader election |
@@ -129,7 +129,7 @@ resources:
   - nvidia.com/gpu
 ```
 
-### Label-Based Grouping (Per-Zone Metrics)
+### Combination Label Grouping (Per-Zone Metrics)
 
 Track binpacking efficiency per availability zone:
 
@@ -140,18 +140,24 @@ labelGroups:
 
 This generates metrics like:
 ```
-kube_binpacking_label_group_utilization_ratio{label_key="topology.kubernetes.io/zone",label_value="us-east-1a",resource="cpu"} 0.75
-kube_binpacking_label_group_node_count{label_key="topology.kubernetes.io/zone",label_value="us-east-1a"} 3
+kube_binpacking_group_utilization_ratio{label_group="topology.kubernetes.io/zone",label_group_value="us-east-1a",resource="cpu"} 0.75
+kube_binpacking_group_node_count{label_group="topology.kubernetes.io/zone",label_group_value="us-east-1a"} 2
 ```
 
-### Multi-Dimensional Grouping
+### Multi-Key Combination Grouping
 
-Track by both zone and instance type:
+Group by zone AND instance type together (SQL-style GROUP BY):
 
 ```yaml
 labelGroups:
+  - topology.kubernetes.io/zone,node.kubernetes.io/instance-type
   - topology.kubernetes.io/zone
-  - node.kubernetes.io/instance-type
+```
+
+This generates composite metrics:
+```
+kube_binpacking_group_utilization_ratio{label_group="topology.kubernetes.io/zone,node.kubernetes.io/instance-type",label_group_value="us-east-1a,m5.large",resource="cpu"} 0.75
+kube_binpacking_group_node_count{label_group="topology.kubernetes.io/zone",label_group_value="us-east-1a,m5.large"} 2
 ```
 
 ### Large Cluster (Reduced Cardinality)
@@ -161,11 +167,11 @@ For clusters with 100+ nodes, disable per-node metrics:
 ```yaml
 disableNodeMetrics: true
 labelGroups:
+  - topology.kubernetes.io/zone,node.kubernetes.io/instance-type
   - topology.kubernetes.io/zone
-  - node.kubernetes.io/instance-type
 ```
 
-**Impact**: Reduces metric cardinality by 90%+ while preserving cluster-wide and zone/instance-type insights.
+**Impact**: Reduces metric cardinality by 90%+ while preserving cluster-wide and group-level insights.
 
 ### Enable Prometheus Operator Integration
 
@@ -249,14 +255,14 @@ All metrics are computed at scrape time from the informer cache (zero API calls 
 | `kube_binpacking_cluster_utilization_ratio` | Gauge | `resource` | Cluster-wide ratio |
 | `kube_binpacking_cluster_node_count` | Gauge | - | Total number of nodes |
 
-### Label Group Metrics
+### Group Metrics
 
 | Metric | Type | Labels | Description |
 |--------|------|--------|-------------|
-| `kube_binpacking_label_group_allocated` | Gauge | `label_key`, `label_value`, `resource` | Total requests for label group |
-| `kube_binpacking_label_group_allocatable` | Gauge | `label_key`, `label_value`, `resource` | Total capacity for label group |
-| `kube_binpacking_label_group_utilization_ratio` | Gauge | `label_key`, `label_value`, `resource` | Ratio for label group |
-| `kube_binpacking_label_group_node_count` | Gauge | `label_key`, `label_value` | Node count for label group |
+| `kube_binpacking_group_allocated` | Gauge | `label_group`, `label_group_value`, `resource` | Total requests for label group |
+| `kube_binpacking_group_allocatable` | Gauge | `label_group`, `label_group_value`, `resource` | Total capacity for label group |
+| `kube_binpacking_group_utilization_ratio` | Gauge | `label_group`, `label_group_value`, `resource` | Ratio for label group |
+| `kube_binpacking_group_node_count` | Gauge | `label_group`, `label_group_value` | Node count for label group |
 
 **Note**: Only emitted when `labelGroups` is configured
 
@@ -277,8 +283,8 @@ kube_binpacking_node_utilization_ratio{resource="cpu"} > 0.8
 ### Per-Zone Utilization
 
 ```promql
-kube_binpacking_label_group_utilization_ratio{
-  label_key="topology.kubernetes.io/zone",
+kube_binpacking_group_utilization_ratio{
+  label_group="topology.kubernetes.io/zone",
   resource="cpu"
 }
 ```
@@ -293,7 +299,7 @@ kube_binpacking_cluster_allocatable{resource="cpu"}
 ### Nodes Per Zone
 
 ```promql
-kube_binpacking_label_group_node_count{label_key="topology.kubernetes.io/zone"}
+kube_binpacking_group_node_count{label_group="topology.kubernetes.io/zone"}
 ```
 
 ## Troubleshooting

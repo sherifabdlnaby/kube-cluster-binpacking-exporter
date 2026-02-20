@@ -670,7 +670,7 @@ func TestBinpackingCollector_ZeroAllocatable(t *testing.T) {
 	}
 }
 
-// TestBinpackingCollector_LabelGrouping tests the label-based grouping metrics.
+// TestBinpackingCollector_LabelGrouping tests the label-based combination grouping metrics.
 func TestBinpackingCollector_LabelGrouping(t *testing.T) {
 	// Create nodes with different label values
 	nodes := []*corev1.Node{
@@ -678,7 +678,7 @@ func TestBinpackingCollector_LabelGrouping(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "node-zone-a-1",
 				Labels: map[string]string{
-					"topology.kubernetes.io/zone": "us-east-1a",
+					"topology.kubernetes.io/zone":      "us-east-1a",
 					"node.kubernetes.io/instance-type": "m5.large",
 				},
 			},
@@ -693,7 +693,7 @@ func TestBinpackingCollector_LabelGrouping(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "node-zone-a-2",
 				Labels: map[string]string{
-					"topology.kubernetes.io/zone": "us-east-1a",
+					"topology.kubernetes.io/zone":      "us-east-1a",
 					"node.kubernetes.io/instance-type": "m5.large",
 				},
 			},
@@ -708,7 +708,7 @@ func TestBinpackingCollector_LabelGrouping(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "node-zone-b-1",
 				Labels: map[string]string{
-					"topology.kubernetes.io/zone": "us-east-1b",
+					"topology.kubernetes.io/zone":      "us-east-1b",
 					"node.kubernetes.io/instance-type": "m5.xlarge",
 				},
 			},
@@ -738,58 +738,35 @@ func TestBinpackingCollector_LabelGrouping(t *testing.T) {
 
 	// Create pods scheduled on different nodes
 	pods := []*corev1.Pod{
-		// Pods in zone us-east-1a
 		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "pod-1",
-				Namespace: "default",
-			},
+			ObjectMeta: metav1.ObjectMeta{Name: "pod-1", Namespace: "default"},
 			Spec: corev1.PodSpec{
-				NodeName: "node-zone-a-1",
-				Containers: []corev1.Container{
-					makeContainer("app", "1000m", "2Gi"),
-				},
+				NodeName:   "node-zone-a-1",
+				Containers: []corev1.Container{makeContainer("app", "1000m", "2Gi")},
 			},
 			Status: corev1.PodStatus{Phase: corev1.PodRunning},
 		},
 		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "pod-2",
-				Namespace: "default",
-			},
+			ObjectMeta: metav1.ObjectMeta{Name: "pod-2", Namespace: "default"},
 			Spec: corev1.PodSpec{
-				NodeName: "node-zone-a-2",
-				Containers: []corev1.Container{
-					makeContainer("app", "2000m", "4Gi"),
-				},
+				NodeName:   "node-zone-a-2",
+				Containers: []corev1.Container{makeContainer("app", "2000m", "4Gi")},
 			},
 			Status: corev1.PodStatus{Phase: corev1.PodRunning},
 		},
-		// Pods in zone us-east-1b
 		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "pod-3",
-				Namespace: "default",
-			},
+			ObjectMeta: metav1.ObjectMeta{Name: "pod-3", Namespace: "default"},
 			Spec: corev1.PodSpec{
-				NodeName: "node-zone-b-1",
-				Containers: []corev1.Container{
-					makeContainer("app", "4000m", "8Gi"),
-				},
+				NodeName:   "node-zone-b-1",
+				Containers: []corev1.Container{makeContainer("app", "4000m", "8Gi")},
 			},
 			Status: corev1.PodStatus{Phase: corev1.PodRunning},
 		},
-		// Pod on node without zone label
 		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "pod-4",
-				Namespace: "default",
-			},
+			ObjectMeta: metav1.ObjectMeta{Name: "pod-4", Namespace: "default"},
 			Spec: corev1.PodSpec{
-				NodeName: "node-no-zone",
-				Containers: []corev1.Container{
-					makeContainer("app", "500m", "1Gi"),
-				},
+				NodeName:   "node-no-zone",
+				Containers: []corev1.Container{makeContainer("app", "500m", "1Gi")},
 			},
 			Status: corev1.PodStatus{Phase: corev1.PodRunning},
 		},
@@ -799,41 +776,117 @@ func TestBinpackingCollector_LabelGrouping(t *testing.T) {
 	nodeLister := &fakeNodeLister{nodes: nodes}
 	podLister := &fakePodLister{pods: pods}
 
-	// Configure label groupings
-	labelGroups := []string{"topology.kubernetes.io/zone", "node.kubernetes.io/instance-type"}
-	resources := []corev1.ResourceName{corev1.ResourceCPU, corev1.ResourceMemory}
+	t.Run("single-key group", func(t *testing.T) {
+		// Group by zone only (single key per group)
+		labelGroups := [][]string{{"topology.kubernetes.io/zone"}}
+		resources := []corev1.ResourceName{corev1.ResourceCPU}
 
-	collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, labelGroups, true, nil, nil)
+		collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, labelGroups, true, nil, nil)
 
-	ch := make(chan prometheus.Metric, 200)
-	collector.Collect(ch)
-	close(ch)
+		ch := make(chan prometheus.Metric, 200)
+		collector.Collect(ch)
+		close(ch)
 
-	// Collect and categorize metrics
-	labelGroupMetrics := make(map[string]map[string]map[string]float64) // metricName -> labelKey -> labelValue -> value
-
-	for m := range ch {
-		// We need to extract the metric information
-		// For testing, we'll verify that label group metrics exist
-		desc := m.Desc().String()
-
-		// Check if this is a label group metric
-		if stringContains(desc, "kube_binpacking_label_group_allocated") ||
-			stringContains(desc, "kube_binpacking_label_group_allocatable") ||
-			stringContains(desc, "kube_binpacking_label_group_utilization_ratio") {
-
-			// Just verify we got label group metrics
-			if labelGroupMetrics["found"] == nil {
-				labelGroupMetrics["found"] = make(map[string]map[string]float64)
+		var foundGroupMetric bool
+		for m := range ch {
+			desc := m.Desc().String()
+			if stringContains(desc, "kube_binpacking_group_allocated") {
+				foundGroupMetric = true
 			}
-			labelGroupMetrics["found"]["exists"] = map[string]float64{"true": 1}
+			// Verify old metric names are NOT emitted
+			if stringContains(desc, "kube_binpacking_label_group_") {
+				t.Error("old metric name kube_binpacking_label_group_ should not be emitted")
+			}
 		}
-	}
+		if !foundGroupMetric {
+			t.Error("expected kube_binpacking_group_allocated metrics but got none")
+		}
+	})
 
-	// Verify we got label group metrics
-	if labelGroupMetrics["found"] == nil {
-		t.Error("Expected label group metrics but got none")
-	}
+	t.Run("multi-key combination group", func(t *testing.T) {
+		// Group by zone AND instance-type (combination group)
+		labelGroups := [][]string{{"topology.kubernetes.io/zone", "node.kubernetes.io/instance-type"}}
+		resources := []corev1.ResourceName{corev1.ResourceCPU}
+
+		collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, labelGroups, true, nil, nil)
+
+		ch := make(chan prometheus.Metric, 200)
+		collector.Collect(ch)
+		close(ch)
+
+		var groupMetricCount int
+		for m := range ch {
+			desc := m.Desc().String()
+			if stringContains(desc, "kube_binpacking_group_allocated") {
+				groupMetricCount++
+			}
+		}
+		// 3 composite values: (us-east-1a,m5.large), (us-east-1b,m5.xlarge), (<none>,m5.large)
+		// × 1 resource = 3 allocated metrics
+		if groupMetricCount != 3 {
+			t.Errorf("expected 3 group_allocated metrics for composite group, got %d", groupMetricCount)
+		}
+	})
+
+	t.Run("multiple groups", func(t *testing.T) {
+		// Two separate groups: one single-key, one multi-key
+		labelGroups := [][]string{
+			{"topology.kubernetes.io/zone"},
+			{"topology.kubernetes.io/zone", "node.kubernetes.io/instance-type"},
+		}
+		resources := []corev1.ResourceName{corev1.ResourceCPU}
+
+		collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, labelGroups, true, nil, nil)
+
+		ch := make(chan prometheus.Metric, 200)
+		collector.Collect(ch)
+		close(ch)
+
+		var groupAllocatedCount, groupNodeCountMetrics int
+		for m := range ch {
+			desc := m.Desc().String()
+			if stringContains(desc, "kube_binpacking_group_allocated") {
+				groupAllocatedCount++
+			}
+			if stringContains(desc, "kube_binpacking_group_node_count") {
+				groupNodeCountMetrics++
+			}
+		}
+		// Group 1 (zone): 3 values × 1 res = 3 allocated
+		// Group 2 (zone,instance-type): 3 values × 1 res = 3 allocated
+		// Total: 6
+		if groupAllocatedCount != 6 {
+			t.Errorf("expected 6 group_allocated metrics for two groups, got %d", groupAllocatedCount)
+		}
+		// Group 1: 3 node_count + Group 2: 3 node_count = 6
+		if groupNodeCountMetrics != 6 {
+			t.Errorf("expected 6 group_node_count metrics for two groups, got %d", groupNodeCountMetrics)
+		}
+	})
+
+	t.Run("missing labels use none", func(t *testing.T) {
+		// node-no-zone is missing the zone label, should get <none>
+		labelGroups := [][]string{{"topology.kubernetes.io/zone"}}
+		resources := []corev1.ResourceName{corev1.ResourceCPU}
+
+		collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, labelGroups, true, nil, nil)
+
+		ch := make(chan prometheus.Metric, 200)
+		collector.Collect(ch)
+		close(ch)
+
+		var groupMetricCount int
+		for m := range ch {
+			desc := m.Desc().String()
+			if stringContains(desc, "kube_binpacking_group_node_count") {
+				groupMetricCount++
+			}
+		}
+		// 3 zone values: us-east-1a, us-east-1b, <none>
+		if groupMetricCount != 3 {
+			t.Errorf("expected 3 group_node_count metrics (including <none>), got %d", groupMetricCount)
+		}
+	})
 }
 
 // TestBinpackingCollector_DisableNodeMetrics tests that per-node metrics are not emitted when disabled.
@@ -962,7 +1015,7 @@ func TestBinpackingCollector_EnableNodeMetrics(t *testing.T) {
 	}
 }
 
-// TestBinpackingCollector_LabelGrouping_NoLabels tests that no label metrics are emitted when no labels are configured.
+// TestBinpackingCollector_LabelGrouping_NoLabels tests that no group metrics are emitted when no label groups are configured.
 func TestBinpackingCollector_LabelGrouping_NoLabels(t *testing.T) {
 	nodes := []*corev1.Node{
 		{
@@ -985,7 +1038,7 @@ func TestBinpackingCollector_LabelGrouping_NoLabels(t *testing.T) {
 	podLister := &fakePodLister{pods: nil}
 
 	// No label groups configured
-	labelGroups := []string{}
+	labelGroups := [][]string{}
 	resources := []corev1.ResourceName{corev1.ResourceCPU}
 
 	collector := NewBinpackingCollector(nodeLister, podLister, logger, resources, labelGroups, true, nil, nil)
@@ -994,11 +1047,11 @@ func TestBinpackingCollector_LabelGrouping_NoLabels(t *testing.T) {
 	collector.Collect(ch)
 	close(ch)
 
-	// Verify no label group metrics
+	// Verify no group metrics
 	for m := range ch {
 		desc := m.Desc().String()
-		if stringContains(desc, "kube_binpacking_label_group") {
-			t.Error("Expected no label group metrics when label groups not configured")
+		if stringContains(desc, "kube_binpacking_group_") {
+			t.Error("Expected no group metrics when label groups not configured")
 		}
 	}
 }

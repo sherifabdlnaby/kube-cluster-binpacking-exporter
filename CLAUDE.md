@@ -39,10 +39,10 @@ All metrics computed at scrape time from informer cache:
 | `kube_binpacking_cluster_allocatable` | Gauge | `resource` | Cluster-wide capacity |
 | `kube_binpacking_cluster_utilization_ratio` | Gauge | `resource` | Cluster-wide ratio |
 | `kube_binpacking_cluster_node_count` | Gauge | - | Total number of nodes in cluster |
-| `kube_binpacking_label_group_allocated` | Gauge | `label_key`, `label_value`, `resource` | Total requests on nodes with label value (only if `--label-groups` set) |
-| `kube_binpacking_label_group_allocatable` | Gauge | `label_key`, `label_value`, `resource` | Total capacity on nodes with label value (only if `--label-groups` set) |
-| `kube_binpacking_label_group_utilization_ratio` | Gauge | `label_key`, `label_value`, `resource` | Ratio for nodes with label value (only if `--label-groups` set) |
-| `kube_binpacking_label_group_node_count` | Gauge | `label_key`, `label_value` | Node count for label value (only if `--label-groups` set) |
+| `kube_binpacking_group_allocated` | Gauge | `label_group`, `label_group_value`, `resource` | Total requests on nodes in this label group (only if `--label-group` set) |
+| `kube_binpacking_group_allocatable` | Gauge | `label_group`, `label_group_value`, `resource` | Total capacity on nodes in this label group (only if `--label-group` set) |
+| `kube_binpacking_group_utilization_ratio` | Gauge | `label_group`, `label_group_value`, `resource` | Ratio for nodes in this label group (only if `--label-group` set) |
+| `kube_binpacking_group_node_count` | Gauge | `label_group`, `label_group_value` | Node count for this label group (only if `--label-group` set) |
 | `kube_binpacking_cache_age_seconds` | Gauge | - | Time since last informer sync |
 
 ## HTTP Endpoints
@@ -71,8 +71,9 @@ go run . --kubeconfig ~/.kube/config --log-level=debug                          
 go run . --resync-period=1m --log-level=debug                                                   # fast resync
 go run . --list-page-size=500 --log-level=debug                                                 # with pagination (recommended for >1000 pods)
 go run . --list-page-size=0                                                                     # disable pagination (small clusters)
-go run . --label-groups=topology.kubernetes.io/zone,node.kubernetes.io/instance-type           # group by zone and instance type
-go run . --disable-node-metrics --label-groups=topology.kubernetes.io/zone                     # reduce cardinality - cluster + zone metrics only
+go run . --label-group=topology.kubernetes.io/zone,node.kubernetes.io/instance-type             # group by zone+instance-type combination
+go run . --label-group=topology.kubernetes.io/zone                                             # group by zone only
+go run . --disable-node-metrics --label-group=topology.kubernetes.io/zone                      # reduce cardinality - cluster + zone metrics only
 ```
 
 ## Testing
@@ -82,8 +83,8 @@ go run . --disable-node-metrics --label-groups=topology.kubernetes.io/zone      
 Tests use mock listers (no cluster required) and cover:
 - **Init container logic** - `calculatePodRequest()` follows K8s scheduler semantics (`max(sum_regular, max_init)`)
 - **Pod filtering** - Running/pending included, unscheduled/terminated excluded
-- **Metrics collection** - Node + cluster aggregates, label-based groups, cache age
-- **Label grouping** - Per-label metrics, nodes without labels (`<none>`), multiple label keys
+- **Metrics collection** - Node + cluster aggregates, combination label groups, cache age
+- **Label grouping** - Single-key groups, multi-key combination groups, missing labels (`<none>`), multiple groups
 - **HTTP endpoints** - `/healthz`, `/readyz`, `/sync`
 - **Error handling** - Lister failures, missing sync info, edge cases
 
@@ -99,7 +100,7 @@ See [TESTING.md](TESTING.md) for detailed test infrastructure, conventions, help
 
 **Pod Accounting**: `max(sum_regular, max_init)` matches K8s scheduler | Terminated pods (`Succeeded|Failed`) excluded server-side via field selector on pod informer | Unscheduled pods (`NodeName=""`) filtered client-side in `Collect()`
 
-**Metrics**: Scrape-time `MustNewConstMetric` (auto-handles node churn) | Custom registry (no Go runtime metrics) | `resource` label for extensibility | Optional label-based grouping via `--label-groups` | Cache age metric for stale alerts
+**Metrics**: Scrape-time `MustNewConstMetric` (auto-handles node churn) | Custom registry (no Go runtime metrics) | `resource` label for extensibility | Optional combination label grouping via repeatable `--label-group` flag | Cache age metric for stale alerts
 
 **Health Checks**: `/healthz` = process alive, `/readyz` = cache synced | Readiness: 5s delay/10s period, Liveness: 10s delay/30s period
 
@@ -199,31 +200,30 @@ No controller-runtime, no operator SDK — just the essentials.
 - Verify API server watch connections aren't dropping
 - Consider shorter `--resync-period` if needed
 
-## Label-Based Grouping
+## Combination Label Grouping
 
-The `--label-groups` flag enables binpacking metrics grouped by node labels. This is useful for:
-- **Per-zone analysis**: Group by `topology.kubernetes.io/zone` to see binpacking efficiency per availability zone
-- **Per-instance-type analysis**: Group by `node.kubernetes.io/instance-type` to compare utilization across node types
-- **Custom groupings**: Use any node label (e.g., `nodepool`, `environment`, `team`)
+The `--label-group` flag (repeatable) enables binpacking metrics grouped by combinations of node labels, like SQL `GROUP BY`. This is useful for:
+- **Per-zone analysis**: `--label-group=topology.kubernetes.io/zone`
+- **Per-zone+instance-type analysis**: `--label-group=topology.kubernetes.io/zone,node.kubernetes.io/instance-type`
+- **Custom groupings**: Use any node labels (e.g., `nodepool`, `environment`, `team`)
 
 **How it works**:
-- Each label key is processed independently
-- Nodes are grouped by their value for that label key
-- Nodes without a tracked label are grouped under `<none>`
-- Separate metrics are emitted for each `(label_key, label_value, resource)` combination
+- Each `--label-group` flag defines one combination group (comma-separated label keys)
+- Nodes are grouped by the **tuple** of values for all keys in the group
+- Missing labels use `<none>` as the value
+- Metrics use `label_group` (the key definition) and `label_group_value` (the composite value)
 
-**Example**: With `--label-groups=topology.kubernetes.io/zone,node.kubernetes.io/instance-type`:
-- A node with `zone=us-east-1a` and `instance-type=m5.large` appears in **both** groupings
-- You get metrics for `zone=us-east-1a` AND separately for `instance-type=m5.large`
-- This allows multi-dimensional analysis via PromQL
+**Example**: With `--label-group=topology.kubernetes.io/zone,node.kubernetes.io/instance-type`:
+- A node with `zone=us-east-1a` and `instance-type=m5.large` produces: `label_group_value="us-east-1a,m5.large"`
+- Nodes are grouped by the combination, not each label independently
+- Add `--label-group=topology.kubernetes.io/zone` separately for zone-only grouping
 
-**Performance**: Label grouping adds O(label_keys × unique_values × resources) metrics. For example:
-- 3 zones × 2 instance types × 2 resources = 12 additional metric series per grouping type
-- Computation is O(nodes × label_keys) per scrape — negligible for typical clusters
+**Data type**: `labelGroups [][]string` (slice of groups, each group is a slice of label keys)
+
+**Performance**: Label grouping adds O(groups × unique_combinations × resources) metrics per scrape — negligible for typical clusters
 
 ## Future Enhancements
 
 See `TODO.md` for planned features:
 - Human-readable log output option with colors
 - Event-handler based pre-computation for O(nodes) scrapes
-- Enhanced label grouping features (node count per group, multi-label AND conditions)

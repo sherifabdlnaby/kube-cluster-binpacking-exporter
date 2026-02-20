@@ -37,7 +37,8 @@ resyncPeriod: 30m
 # -- Page size for initial list calls. Use `0` to disable pagination. Recommended `500` for clusters with >1000 pods
 listPageSize: 500
 
-# -- Node label keys to group metrics by. Enables per-zone, per-instance-type metrics. Example: `["topology.kubernetes.io/zone"]`
+# -- Label groups for combination grouping. Each entry is a comma-separated list of label keys defining one group.
+# Nodes are grouped by the tuple of values for all keys in the group. Example: `["topology.kubernetes.io/zone,node.kubernetes.io/instance-type", "topology.kubernetes.io/zone"]`
 labelGroups: []
 
 # -- Disable per-node metrics to reduce cardinality. Recommended for clusters with >100 nodes

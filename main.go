@@ -22,13 +22,22 @@ var (
 	version = "dev"
 )
 
+// stringSliceFlag implements flag.Value for repeatable string flags.
+type stringSliceFlag []string
+
+func (s *stringSliceFlag) String() string { return strings.Join(*s, ", ") }
+func (s *stringSliceFlag) Set(val string) error {
+	*s = append(*s, val)
+	return nil
+}
+
 func main() {
 	var (
 		kubeconfig      string
 		metricsAddr     string
 		metricsPath     string
 		resourceCSV     string
-		labelGroupsCSV  string
+		labelGroupFlags stringSliceFlag
 		logLevel        string
 		logFormat       string
 		resyncPeriod    string
@@ -48,8 +57,8 @@ func main() {
 	flag.StringVar(&metricsAddr, "metrics-addr", ":9101", "address to serve metrics on")
 	flag.StringVar(&metricsPath, "metrics-path", "/metrics", "HTTP path for metrics endpoint")
 	flag.StringVar(&resourceCSV, "resources", "cpu,memory", "comma-separated list of resources to track")
-	flag.StringVar(&labelGroupsCSV, "label-groups", "", "comma-separated list of node label keys to group by (e.g., 'topology.kubernetes.io/zone,node.kubernetes.io/instance-type')")
-	flag.BoolVar(&disableNodeMetrics, "disable-node-metrics", false, "disable per-node metrics to reduce cardinality (only emit cluster-wide and label-group metrics)")
+	flag.Var(&labelGroupFlags, "label-group", "comma-separated label keys defining one combination group (repeatable, e.g., --label-group=zone,instance-type --label-group=zone)")
+	flag.BoolVar(&disableNodeMetrics, "disable-node-metrics", false, "disable per-node metrics to reduce cardinality (only emit cluster-wide and group metrics)")
 	flag.StringVar(&logLevel, "log-level", "info", "log level: debug, info, warn, error")
 	flag.StringVar(&logFormat, "log-format", "json", "log format: json, text")
 	flag.StringVar(&resyncPeriod, "resync-period", "30m", "informer cache resync period (e.g., 1m, 30s, 1h30m)")
@@ -71,13 +80,17 @@ func main() {
 	resources := parseResources(resourceCSV)
 	logger.Info("tracking resources", "resources", resourceCSV)
 
-	labelGroups := parseLabels(labelGroupsCSV)
+	labelGroups := parseLabelGroups(labelGroupFlags)
 	if len(labelGroups) > 0 {
-		logger.Info("tracking label groups", "labels", labelGroupsCSV)
+		groupStrs := make([]string, len(labelGroups))
+		for i, g := range labelGroups {
+			groupStrs[i] = strings.Join(g, ",")
+		}
+		logger.Info("tracking label groups", "groups", groupStrs)
 	}
 
 	if disableNodeMetrics {
-		logger.Info("per-node metrics disabled - only emitting cluster-wide and label-group metrics")
+		logger.Info("per-node metrics disabled - only emitting cluster-wide and group metrics")
 	}
 
 	resync, err := time.ParseDuration(resyncPeriod)
@@ -155,6 +168,14 @@ func main() {
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
+		labelGroupsHTML := ""
+		if len(labelGroups) > 0 {
+			labelGroupsHTML = "<h3>Label Groups</h3><ul>"
+			for _, g := range labelGroups {
+				labelGroupsHTML += "<li>" + strings.Join(g, ", ") + "</li>"
+			}
+			labelGroupsHTML += "</ul>"
+		}
 		_, _ = fmt.Fprintf(w, `<!DOCTYPE html>
 <html>
 <head><title>Kube Binpacking Exporter</title></head>
@@ -167,8 +188,9 @@ func main() {
 <li><a href="/healthz">/healthz</a> - Liveness probe</li>
 <li><a href="/readyz">/readyz</a> - Readiness probe</li>
 </ul>
+%s
 </body>
-</html>`, version, metricsPath, metricsPath)
+</html>`, version, metricsPath, metricsPath, labelGroupsHTML)
 	})
 
 	mux.Handle(metricsPath, promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
@@ -273,17 +295,20 @@ func parseResources(csv string) []corev1.ResourceName {
 	return resources
 }
 
-func parseLabels(csv string) []string {
-	if csv == "" {
-		return nil
-	}
-	parts := strings.Split(csv, ",")
-	labels := make([]string, 0, len(parts))
-	for _, p := range parts {
-		p = strings.TrimSpace(p)
-		if p != "" {
-			labels = append(labels, p)
+func parseLabelGroups(flags []string) [][]string {
+	var groups [][]string
+	for _, f := range flags {
+		parts := strings.Split(f, ",")
+		var keys []string
+		for _, p := range parts {
+			p = strings.TrimSpace(p)
+			if p != "" {
+				keys = append(keys, p)
+			}
+		}
+		if len(keys) > 0 {
+			groups = append(groups, keys)
 		}
 	}
-	return labels
+	return groups
 }

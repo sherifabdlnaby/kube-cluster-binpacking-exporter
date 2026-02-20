@@ -67,8 +67,8 @@ spec:
             - --log-level={{ .Values.logLevel }}
             - --log-format={{ .Values.logFormat }}
             - --list-page-size={{ .Values.listPageSize }}
-            {{- if .Values.labelGroups }}
-            - --label-groups={{ join "," .Values.labelGroups }}
+            {{- range .Values.labelGroups }}
+            - --label-group={{ . }}
             {{- end }}
             {{- if .Values.disableNodeMetrics }}
             - --disable-node-metrics

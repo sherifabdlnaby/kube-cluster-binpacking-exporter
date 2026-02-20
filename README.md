@@ -42,7 +42,7 @@ Check Helm [values.yaml](./chart/values.yaml) for options, most importantly how 
 
 - **Informer-based**: Zero API calls per metric scrape — all data served from in-memory cache.
 - **Per-node and cluster-wide metrics**: Individual node utilization plus cluster aggregates.
-- **Label-based grouping**: Calculate binpacking metrics grouped by node labels (e.g., per-zone, per-instance-type) via `--label-groups` flag
+- **Combination label grouping**: Calculate binpacking metrics grouped by node label combinations (e.g., per-zone, per-zone+instance-type) via repeatable `--label-group` flag
 - **Cardinality control**: Disable per-node metrics via `--disable-node-metrics` to reduce metric cardinality.
 - **Configurable resync period**: Control informer cache refresh frequency.
 - Multi-arch build.
@@ -51,7 +51,7 @@ Check Helm [values.yaml](./chart/values.yaml) for options, most importantly how 
 
 - Support more Node resources. (e.g `storage` and `gpu`)
 - Calculate Daemonset Overhead.
-- Advanced Label Grouping (Group by two labels values).
+- Node group filtering by label values.
 
 ### Out of scope
 
@@ -72,14 +72,14 @@ Resource allocation metrics use a `resource` label to identify the resource type
 | `kube_binpacking_cluster_allocatable` | Gauge | `resource` | Cluster-wide total allocatable resource |
 | `kube_binpacking_cluster_utilization_ratio` | Gauge | `resource` | Cluster-wide allocation ratio |
 | `kube_binpacking_cluster_node_count` | Gauge | - | Total number of nodes in the cluster |
-| `kube_binpacking_label_group_allocated` | Gauge | `label_key`, `label_value`, `resource` | Total resource requested on nodes with this label value |
-| `kube_binpacking_label_group_allocatable` | Gauge | `label_key`, `label_value`, `resource` | Total allocatable resource on nodes with this label value |
-| `kube_binpacking_label_group_utilization_ratio` | Gauge | `label_key`, `label_value`, `resource` | Ratio for nodes with this label value (0.0–1.0) |
-| `kube_binpacking_label_group_node_count` | Gauge | `label_key`, `label_value` | Number of nodes with this label value |
+| `kube_binpacking_group_allocated` | Gauge | `label_group`, `label_group_value`, `resource` | Total resource requested on nodes in this label group |
+| `kube_binpacking_group_allocatable` | Gauge | `label_group`, `label_group_value`, `resource` | Total allocatable resource on nodes in this label group |
+| `kube_binpacking_group_utilization_ratio` | Gauge | `label_group`, `label_group_value`, `resource` | Ratio for nodes in this label group (0.0–1.0+) |
+| `kube_binpacking_group_node_count` | Gauge | `label_group`, `label_group_value` | Number of nodes in this label group |
 
 **Notes**:
 - Per-node metrics can be disabled via `--disable-node-metrics` to reduce cardinality in large clusters
-- Label group metrics are only emitted when `--label-groups` is configured
+- Group metrics are only emitted when `--label-group` is configured
 
 ### Example Output
 
@@ -96,10 +96,10 @@ kube_binpacking_cluster_allocatable{resource="cpu"} 16
 kube_binpacking_cluster_utilization_ratio{resource="cpu"} 0.78125
 kube_binpacking_cluster_node_count 4
 
-kube_binpacking_label_group_allocated{label_key="topology.kubernetes.io/zone",label_value="us-east-1a",resource="cpu"} 6.5
-kube_binpacking_label_group_allocatable{label_key="topology.kubernetes.io/zone",label_value="us-east-1a",resource="cpu"} 8
-kube_binpacking_label_group_utilization_ratio{label_key="topology.kubernetes.io/zone",label_value="us-east-1a",resource="cpu"} 0.8125
-kube_binpacking_label_group_node_count{label_key="topology.kubernetes.io/zone",label_value="us-east-1a"} 2
+kube_binpacking_group_allocated{label_group="topology.kubernetes.io/zone",label_group_value="us-east-1a",resource="cpu"} 6.5
+kube_binpacking_group_allocatable{label_group="topology.kubernetes.io/zone",label_group_value="us-east-1a",resource="cpu"} 8
+kube_binpacking_group_utilization_ratio{label_group="topology.kubernetes.io/zone",label_group_value="us-east-1a",resource="cpu"} 0.8125
+kube_binpacking_group_node_count{label_group="topology.kubernetes.io/zone",label_group_value="us-east-1a"} 2
 
 ```
 
@@ -111,7 +111,7 @@ kube_binpacking_label_group_node_count{label_key="topology.kubernetes.io/zone",l
 | `--metrics-addr` | `:9101` | Address to serve metrics on |
 | `--metrics-path` | `/metrics` | HTTP path for metrics endpoint |
 | `--resources` | `cpu,memory` | Comma-separated list of resources to track |
-| `--label-groups` | (none) | Comma-separated list of node label keys to group by (e.g., `topology.kubernetes.io/zone,node.kubernetes.io/instance-type`) |
+| `--label-group` | (none) | Repeatable. Comma-separated label keys defining one combination group (e.g., `--label-group=zone,instance-type --label-group=zone`) |
 | `--disable-node-metrics` | `false` | Disable per-node metrics to reduce cardinality (only emit cluster-wide and label-group metrics) |
 | `--log-level` | `info` | Log level: debug, info, warn, error |
 | `--log-format` | `json` | Log format: json, text |
@@ -179,9 +179,10 @@ go run . --kubeconfig ~/.kube/config
 # Debug logging
 go run . --kubeconfig ~/.kube/config --log-level=debug
 
-# With label grouping
+# With label grouping (combination: zone + instance-type)
 go run . --kubeconfig ~/.kube/config \
-  --label-groups=topology.kubernetes.io/zone,node.kubernetes.io/instance-type
+  --label-group=topology.kubernetes.io/zone,node.kubernetes.io/instance-type \
+  --label-group=topology.kubernetes.io/zone
 ```
 
 Once running, open `http://localhost:9101` for the homepage with links to all endpoints.
