@@ -35,6 +35,44 @@ helm install kube-binpacking-exporter \
 
 Check Helm [values.yaml](./chart/values.yaml) for options, most importantly how your O11Y stack pulls the metrics from `/metrics` at `:9101`.
 
+<details>
+<summary><strong>To Run Locally</strong></summary>
+
+Note: you must have `get|list|watch` permissions on `pods` and `nodes` to run KBE locally.
+
+#### Docker
+
+```bash
+# Build
+docker build -t kube-binpacking-exporter:dev .
+
+# Run (mount your kubeconfig)
+docker run --rm -p 9101:9101 \
+  -v ~/.kube/config:/home/nonroot/.kube/config:ro \
+  kube-binpacking-exporter:dev \
+  --kubeconfig /home/nonroot/.kube/config
+```
+
+Once running, open `http://localhost:9101` for the homepage with links to all endpoints.
+
+#### Go
+
+```bash
+# Basic (uses your current kubeconfig context)
+go run . --kubeconfig ~/.kube/config
+
+# Debug logging
+go run . --kubeconfig ~/.kube/config --log-level=debug
+
+# With label grouping 
+go run . --kubeconfig ~/.kube/config \
+  --label-group=topology.kubernetes.io/zone,node.kubernetes.io/instance-type \
+  --label-group=topology.kubernetes.io/zone
+```
+
+
+</details>
+
 ## Features Highlights
 
 - **Informer-based**: Zero API calls per metric scrape, so it's very light on the Kube API server. 
@@ -79,7 +117,8 @@ Resource allocation metrics use a `resource` label to identify the resource type
 - Per-node metrics can be disabled via `--disable-node-metrics` to reduce cardinality in large clusters
 - Group metrics are only emitted when `--label-group` is configured
 
-### Example Output
+<details>
+<summary><strong>Example Output</strong></summary>
 
 ```
 kube_binpacking_node_allocated{node="worker-1",resource="cpu"} 3.5
@@ -98,8 +137,9 @@ kube_binpacking_group_allocated{label_group="topology.kubernetes.io/zone",label_
 kube_binpacking_group_allocatable{label_group="topology.kubernetes.io/zone",label_group_value="us-east-1a",resource="cpu"} 8
 kube_binpacking_group_utilization_ratio{label_group="topology.kubernetes.io/zone",label_group_value="us-east-1a",resource="cpu"} 0.8125
 kube_binpacking_group_node_count{label_group="topology.kubernetes.io/zone",label_group_value="us-east-1a"} 2
-
 ```
+
+</details>
 
 ### Flags
 
@@ -122,11 +162,10 @@ Defaults to port `:9101`
 
 | Endpoint | Purpose |
 |----------|---------|
-| `/` | Homepage with links to all endpoints and configuration details |
 | `/metrics` | Prometheus metrics (configured via `--metrics-path`) |
+| `/sync` | Cache sync status - returns JSON with last sync time, age, and sync state |
 | `/healthz` | Liveness probe - returns 200 if process is alive |
 | `/readyz` | Readiness probe - returns 200 if informer cache is synced, 503 otherwise |
-| `/sync` | Cache sync status - returns JSON with last sync time, age, and sync state |
 
 # Development
 
@@ -167,23 +206,6 @@ go vet ./...
 golangci-lint run
 helm lint chart
 ```
-
-## Run Locally
-
-```bash
-# Basic (uses your current kubeconfig context)
-go run . --kubeconfig ~/.kube/config
-
-# Debug logging
-go run . --kubeconfig ~/.kube/config --log-level=debug
-
-# With label grouping (combination: zone + instance-type)
-go run . --kubeconfig ~/.kube/config \
-  --label-group=topology.kubernetes.io/zone,node.kubernetes.io/instance-type \
-  --label-group=topology.kubernetes.io/zone
-```
-
-Once running, open `http://localhost:9101` for the homepage with links to all endpoints.
 
 # Contributing
 
