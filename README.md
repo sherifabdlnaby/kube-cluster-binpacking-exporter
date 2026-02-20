@@ -8,26 +8,25 @@
 [![Kubernetes](https://img.shields.io/badge/kubernetes-%3E%3D%201.29-blue?logo=kubernetes&logoColor=white)](https://github.com/sherifabdlnaby/kube-binpacking-exporter)
 [![License](https://img.shields.io/github/license/sherifabdlnaby/kube-binpacking-exporter)](LICENSE)
 
-Export straight-forward metrics to track Kubernetes cluster nodes binpacking efficiency, across individual nodes, by node groups (via Labels), or across the entire cluster, that are easier to aggregate over longer periods of time.
+A simple exporter of the ratio of **allocated** (Requests) to **allocatable** resources across your Kubernetes cluster, per node group (via label combinations), and cluster-wide.
 
-- **What kind of metrics?**: Calculate the % of **allocated** resources (via Requests) to **allocatable** resources. Used to track binpacking efficiency and scheduling fragmentation waste.
+You can use KBE to monitor how well your cluster bin-packs overtime, and how your bin-packing optimization reflects over extended period of time.  It is Like running [eks-node-viewer](https://github.com/awslabs/eks-node-viewer) in a loop to export historical metrics to your O11Y stack. 
 
-- **Why not use Kube O11Y tools?** While the combination of `kube-state-metrics`, `kubelet` and `cAdvisor` metrics can be used, they fall short because:
 
-    1. These metrics are pulled from different sources at different intervals. This causes aggregation to not give an accurate *snapshot* of the cluster and not reflect accurate numbers, especially when tracking improvement over time.
-        1. Inaccuracy is very high in highly-dynamic clusters with a lot of pod movement.
-    2. Queries get extremely complex ( e.g exclude failed & completed pods, handle init containers, complex `joins` to group by node labels )
-    3. Some O11Y tools ( looking at you DD ) query language lacks the flexibility to accurately combine and aggregate these metrics.
+## Why not use Kube O11Y tools?
 
-- **How is KBE better?**: Mirrors the cluster state and returns an atomic snapshot of the cluster binpacking state on each scrape. It's like running [eks-node-viewer](https://github.com/awslabs/eks-node-viewer) in a loop.
+While the combination of `kube-state-metrics`, `kubelet` and `cAdvisor` metrics can be used, they fall short because:
 
-### Who typically uses KBE?
+    1. These metrics are pulled from different sources at different intervals. This causes aggregation to not give an accurate *snapshot* of the cluster binpacking over time.
+    2. Queries get extremely complex, and you have to handle edge cases ( e.g exclude failed & completed pods, handle init containers, not count pending pods, complex `joins` to group by node labels )
+    3. Some O11Y tools  query language ( looking at you Datadog ) lacks the flexibility to join & combine metrics from different data sources.
 
-Anyone 🤷🏻‍♂️ But specifically Platform Engineers, and Cluster Administrators trying to optimize their Cluster Binpacking efficiency (e.g tinkering with [karpenter](https://karpenter.sh/docs/concepts/scheduling/) configurations) and want to track progress over time.
+**How is KBE better?**: KBE Mirrors the cluster state and returns an atomic snapshot of the cluster binpacking state on each scrape.
+
 
 # Installation
 
-**Helm (Recommended):**
+## Helm (Recommended):
 ```bash
 helm install kube-binpacking-exporter \
   oci://ghcr.io/sherifabdlnaby/charts/kube-binpacking-exporter \
@@ -38,26 +37,27 @@ Check Helm [values.yaml](./chart/values.yaml) for options, most importantly how 
 
 ## Features Highlights
 
-- **Informer-based**: Zero API calls per metric scrape — all data served from in-memory cache.
+- **Informer-based**: Zero API calls per metric scrape, so it's very light on the Kube API server. 
 - **Per-node and cluster-wide metrics**: Individual node utilization plus cluster aggregates.
-- **Combination label grouping**: Calculate binpacking metrics grouped by node label combinations (e.g., per-zone, per-zone+instance-type) via repeatable `--label-group` flag
-- **Cardinality control**: Disable per-node metrics via `--disable-node-metrics` to reduce metric cardinality.
-- **Configurable resync period**: Control informer cache refresh frequency.
-- Multi-arch build.
+- **Combination label grouping**: Calculate binpacking metrics grouped by node label combinations (e.g., per-zone, per-zone+instance-type).
+- **Cardinality control**: Disable per-node metrics via `--disable-node-metrics`.
+- Track Daemonset Overhead.
+
 
 ### Planned
 
 - Support more Node resources. (e.g `storage` and `gpu`)
-- Calculate Daemonset Overhead.
-- Node group filtering by label values.
+- Prometheus & Datadog Dashboard.
 
 ### Out of scope
 
 KBE's only concern is **Are Pods' _requests_ being satisfied in the most efficient way possible**. Tracking if pods are setting the correct requests, and if they are under-utilizing requests is out of the scope of this tool.
 
-## Metrics
+--- 
 
-### Binpacking Metrics
+# Metrics
+
+## Binpacking Metrics
 
 Resource allocation metrics use a `resource` label to identify the resource type (cpu, memory, etc.):
 
@@ -128,9 +128,9 @@ Defaults to port `:9101`
 | `/readyz` | Readiness probe - returns 200 if informer cache is synced, 503 otherwise |
 | `/sync` | Cache sync status - returns JSON with last sync time, age, and sync state |
 
-## Development
+# Development
 
-### Build
+## Build
 
 ```bash
 # Build binary
@@ -140,7 +140,7 @@ go build -o kube-binpacking-exporter .
 docker build -t kube-binpacking-exporter:dev .
 ```
 
-### Test
+## Test
 
 ```bash
 # Run all tests
@@ -160,7 +160,7 @@ go test -race ./...
 
 Tests use mock listers — no cluster required. See [TESTING.md](TESTING.md) for full details.
 
-### Lint & Verify
+## Lint & Verify
 
 ```bash
 go vet ./...
@@ -168,7 +168,7 @@ golangci-lint run
 helm lint chart
 ```
 
-### Run Locally
+## Run Locally
 
 ```bash
 # Basic (uses your current kubeconfig context)
@@ -185,14 +185,14 @@ go run . --kubeconfig ~/.kube/config \
 
 Once running, open `http://localhost:9101` for the homepage with links to all endpoints.
 
-## Contributing
+# Contributing
 
 See [TODO.md](TODO.md) for planned features and improvements.
 
-## Disclaimer
+# Disclaimer
 
 This project was developed with the assistance of AI agents, specifically [Claude Code](https://docs.anthropic.com/en/docs/claude-code). All code has been reviewed and approved by the maintainer.
 
-## License
+# License
 
 MIT
