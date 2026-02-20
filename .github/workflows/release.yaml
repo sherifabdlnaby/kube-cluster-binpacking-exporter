@@ -32,10 +32,8 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
-    # On push: only run for PR merges (not direct pushes)
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'push' && contains(github.event.head_commit.message, 'Merge pull request'))
+    # PR detection is handled in the "Find merged PR" step — no job-level filter needed
+    # since push is already scoped to main and non-PR pushes are skipped gracefully
 
     steps:
       - uses: actions/checkout@v6
@@ -43,28 +41,26 @@ jobs:
           fetch-depth: 0
 
       # ── Determine version ─────────────────────────────────────────────
-      - name: Get merged PR number
+      - name: Find merged PR and determine bump
         if: github.event_name == 'push'
         id: pr
         run: |
-          PR_NUM=$(echo "${{ github.event.head_commit.message }}" | grep -oP 'Merge pull request #\K\d+' || echo "")
-          if [ -z "$PR_NUM" ]; then
-            echo "Not a PR merge, skipping"
+          # Use GitHub API to find the PR associated with this commit
+          # Works for all merge strategies: merge commit, squash, and rebase
+          PR_JSON=$(gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/pulls" \
+            --jq '[.[] | select(.merged_at != null and .base.ref == "main")] | .[0] // empty' 2>/dev/null || echo "")
+
+          if [ -z "$PR_JSON" ]; then
+            echo "No merged PR found for commit ${{ github.sha }}, skipping release"
             echo "skip=true" >> $GITHUB_OUTPUT
             exit 0
           fi
-          echo "number=$PR_NUM" >> $GITHUB_OUTPUT
-          echo "Found PR #$PR_NUM"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Get PR labels and determine bump
-        if: github.event_name == 'push' && steps.pr.outputs.skip != 'true'
-        id: labels
-        run: |
-          LABELS=$(gh pr view ${{ steps.pr.outputs.number }} --json labels --jq '.labels[].name' | tr '\n' ',' || echo "")
+          PR_NUM=$(echo "$PR_JSON" | jq -r '.number')
+          LABELS=$(echo "$PR_JSON" | jq -r '[.labels[].name] | join(",")')
+          echo "number=$PR_NUM" >> $GITHUB_OUTPUT
           echo "labels=$LABELS" >> $GITHUB_OUTPUT
-          echo "PR Labels: $LABELS"
+          echo "Found merged PR #$PR_NUM with labels: $LABELS"
 
           # Check for skip-release
           if echo "$LABELS" | grep -q "skip-release"; then
@@ -86,7 +82,7 @@ jobs:
 
       - name: Compute next version
         if: >-
-          (github.event_name == 'push' && steps.pr.outputs.skip != 'true' && steps.labels.outputs.skip != 'true') ||
+          (github.event_name == 'push' && steps.pr.outputs.skip != 'true') ||
           github.event_name == 'workflow_dispatch'
         id: version
         run: |
@@ -101,7 +97,7 @@ jobs:
             exit 0
           fi
 
-          BUMP="${{ steps.labels.outputs.bump }}"
+          BUMP="${{ steps.pr.outputs.bump }}"
 
           # Get latest semver tag
           LATEST_TAG=$(git tag -l 'v*' --sort=-v:refname | head -1)
