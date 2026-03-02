@@ -200,7 +200,7 @@ jobs:
           GORELEASER_PREVIOUS_TAG: ${{ needs.version.outputs.previous_tag }}
 
       - name: Attest binary artifacts
-        uses: actions/attest-build-provenance@v3
+        uses: actions/attest-build-provenance@v4
         with:
           subject-checksums: ./dist/checksums.txt
 
@@ -231,7 +231,7 @@ jobs:
 
       # ── Docker image attestation (provenance + SBOM) ──────────────────
       - name: Attest Docker image provenance
-        uses: actions/attest-build-provenance@v3
+        uses: actions/attest-build-provenance@v4
         with:
           subject-name: ghcr.io/${{ github.repository }}
           subject-digest: ${{ steps.digest.outputs.digest }}
