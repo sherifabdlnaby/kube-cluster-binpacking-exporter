@@ -242,7 +242,7 @@ jobs:
             -o spdx-json=image-sbom.spdx.json
 
       - name: Attest Docker image SBOM
-        uses: actions/attest-sbom@v3
+        uses: actions/attest-sbom@v4
         with:
           subject-name: ghcr.io/${{ github.repository }}
           subject-digest: ${{ steps.digest.outputs.digest }}
